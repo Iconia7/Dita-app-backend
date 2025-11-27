@@ -1,19 +1,28 @@
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
-    # Student Details
+    # ... existing fields ...
     admission_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     program = models.CharField(max_length=100, null=True, blank=True)
     year_of_study = models.IntegerField(default=1)
     phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
     
-    # Roles & Status
-    is_dita_official = models.BooleanField(default=False)
-    is_paid_member = models.BooleanField(default=False)
-    
-    def __str__(self):
-        return f"{self.username} - {self.admission_number}"
+    # CHANGE: Replace the boolean with a Date
+    # We keep 'is_paid_member' but we won't set it manually anymore.
+    # We will calculate it based on this date.
+    membership_expiry = models.DateTimeField(null=True, blank=True) 
+
+    @property
+    def is_active_member(self):
+        """
+        Calculates status dynamically. 
+        Returns True if expiry date is in the future.
+        """
+        if self.membership_expiry and self.membership_expiry > timezone.now():
+            return True
+        return False
 
 class Event(models.Model):
     title = models.CharField(max_length=200)

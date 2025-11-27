@@ -2,17 +2,36 @@ from rest_framework import serializers
 from .models import User, Event, Payment
 
 class UserSerializer(serializers.ModelSerializer):
+    # 1. We force this field to be calculated by a function below
+    is_paid_member = serializers.SerializerMethodField()
+    
+    # 2. We allow the expiry date to be read
+    membership_expiry = serializers.DateTimeField(format="%Y-%m-%d", read_only=True)
+
     class Meta:
         model = User
-        # We only send these fields to the mobile app
-        fields = ['id', 'username', 'email', 'admission_number', 'program', 'year_of_study', 'is_paid_member', 'qr_code_data']
+        fields = [
+            'id', 
+            'username', 
+            'email', 
+            'admission_number', 
+            'program', 
+            'year_of_study', 
+            'phone_number',
+            'is_paid_member', # Ensure this is in the list
+            'membership_expiry',
+            'qr_code_data'
+        ]
         
-    # We add a custom field for the QR code data string
     qr_code_data = serializers.SerializerMethodField()
 
     def get_qr_code_data(self, obj):
-        # The QR code will just be the Admission Number (simple version)
         return obj.admission_number
+
+    # 3. This function runs every time data is requested
+    def get_is_paid_member(self, obj):
+        # We explicitly call the model property here
+        return obj.is_active_member
     
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

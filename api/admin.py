@@ -5,10 +5,15 @@ from .models import User, Event, Payment
 # 1. Custom User Admin
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'admission_number', 'program', 'year_of_study', 'is_paid_member')
-    list_filter = ('is_paid_member', 'program', 'year_of_study', 'is_staff')
+    # SHOW the calculated property 'is_active_member' and the date 'membership_expiry'
+    list_display = ('username', 'admission_number', 'program', 'year_of_study', 'is_active_member', 'membership_expiry')
+    
+    # FILTER by the date field (Properties cannot be used in filters directly)
+    list_filter = ('membership_expiry', 'program', 'year_of_study', 'is_staff')
+    
+    # Allow editing the Expiry Date manually
     fieldsets = UserAdmin.fieldsets + (
-        ('Student Details', {'fields': ('admission_number', 'program', 'year_of_study', 'phone_number', 'is_paid_member')}),
+        ('Student Details', {'fields': ('admission_number', 'program', 'year_of_study', 'phone_number', 'membership_expiry')}),
     )
 
 # 2. Event Admin
@@ -17,10 +22,9 @@ class EventAdmin(admin.ModelAdmin):
     list_display = ('title', 'date', 'venue')
     list_filter = ('date',)
 
-# 3. Payment Admin (UPDATED)
+# 3. Payment Admin
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    # We changed 'is_verified' to 'status' to match your PayHero logic
     list_display = ('student', 'amount', 'phone_number', 'status', 'timestamp', 'mpesa_receipt')
     list_filter = ('status', 'timestamp')
     search_fields = ('student__username', 'phone_number', 'mpesa_receipt', 'external_reference')

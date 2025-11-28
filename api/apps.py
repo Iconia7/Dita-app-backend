@@ -32,3 +32,5 @@ class ApiConfig(AppConfig):
 
             except Exception as e:
                 print(f"❌ Firebase Initialization Failed: {e}")
+                
+                import api.signals

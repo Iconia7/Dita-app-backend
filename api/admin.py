@@ -4,8 +4,10 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
+admin.site.register(Event) # <--- Add this
+admin.site.register(RSVP)
 # 1. Custom User Admin
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):

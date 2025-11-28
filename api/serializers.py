@@ -55,15 +55,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class EventSerializer(serializers.ModelSerializer):
+    # Add a field to check if the CURRENT user asking for events has RSVP'd
     has_rsvped = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
-        fields = '__all__'
-        
+        fields = ['id', 'title', 'description', 'date', 'venue', 'image', 'has_rsvped']
+
     def get_has_rsvped(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
-            return obj.attendees.filter(id=user.id).exists()
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.rsvp_set.filter(user=request.user).exists()
         return False
     
 class ResourceSerializer(serializers.ModelSerializer):

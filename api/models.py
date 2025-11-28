@@ -48,14 +48,21 @@ class Event(models.Model):
     description = models.TextField()
     date = models.DateTimeField()
     venue = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='events/', blank=True, null=True) 
+    # This image will go to Cloudinary automatically
+    image = models.ImageField(upload_to='events/', null=True, blank=True) 
     
-    # Logic
-    attendees = models.ManyToManyField(User, related_name='rsvped_events', blank=True)
-    checked_in_users = models.ManyToManyField(User, related_name='attended_events', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+
+class RSVP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'event')
     
 class Resource(models.Model):
     TYPE_CHOICES = [

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static # <--- MAKE SURE THIS IS IMPORTED
+from api import views
 from rest_framework.routers import DefaultRouter
 from api.views import (
     UserViewSet, EventViewSet, PaymentViewSet, 
@@ -26,6 +27,8 @@ urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/pay/', InitiatePaymentView.as_view(), name='pay'),
     path('api/mpesa/callback/', PayHeroCallbackView.as_view(), name='callback'),
+    path('api/events/', views.get_events, name='get_events'),
+    path('api/events/<int:event_id>/rsvp/', views.rsvp_event, name='rsvp_event'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

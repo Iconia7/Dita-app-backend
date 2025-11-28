@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes, action 
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
-from .models import User, Event, Payment, Resource, Announcement
+from .models import RSVP, User, Event, Payment, Resource, Announcement
 from .serializers import (
     UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
@@ -14,7 +14,33 @@ from .serializers import (
 from .payhero_utils import initiate_payhero_push
 
 # --- STANDARD VIEWSETS ---
+@api_view(['GET'])
+def get_events(request):
+    # Get events that haven't happened yet (optional filter)
+    # events = Event.objects.filter(date__gte=datetime.now()).order_by('date')
+    
+    # For now, just get all events, newest first
+    events = Event.objects.all().order_by('date')
+    serializer = EventSerializer(events, many=True, context={'request': request})
+    return Response(serializer.data)
 
+@api_view(['POST'])
+def rsvp_event(request, event_id):
+    user_id = request.data.get('user_id')
+    try:
+        event = Event.objects.get(id=event_id)
+        user = User.objects.get(id=user_id)
+        
+        # Toggle RSVP (If exists delete, if not create)
+        rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
+        if not created:
+            rsvp.delete()
+            return Response({"status": "un-rsvped", "message": "RSVP cancelled"})
+            
+        return Response({"status": "rsvped", "message": "RSVP successful"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+    
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

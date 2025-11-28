@@ -157,14 +157,3 @@ else:
     # Local development path
     GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
 
-# Initialize Firebase Admin
-if not firebase_admin._apps:
-    try:
-        if os.path.exists(GOOGLE_CREDENTIALS_PATH):
-            cred = credentials.Certificate(GOOGLE_CREDENTIALS_PATH)
-            firebase_admin.initialize_app(cred)
-            print(f"✅ Firebase initialized successfully using: {GOOGLE_CREDENTIALS_PATH}")
-        else:
-            print(f"⚠️ Warning: serviceAccountKey.json not found at {GOOGLE_CREDENTIALS_PATH}")
-    except Exception as e:
-        print(f"❌ Error initializing Firebase: {e}")

@@ -1,11 +1,12 @@
 from rest_framework import serializers
-from .models import User, Event, Payment
+from .models import Resource, User, Event, Payment, Announcement
 
 class UserSerializer(serializers.ModelSerializer):
-    # 1. We force this field to be calculated by a function below
+    # 1. Custom Calculated Fields
     is_paid_member = serializers.SerializerMethodField()
+    qr_code_data = serializers.SerializerMethodField()
     
-    # 2. We allow the expiry date to be read
+    # 2. formatting the date
     membership_expiry = serializers.DateTimeField(format="%Y-%m-%d", read_only=True)
 
     class Meta:
@@ -18,21 +19,22 @@ class UserSerializer(serializers.ModelSerializer):
             'program', 
             'year_of_study', 
             'phone_number',
-            'is_paid_member', # Ensure this is in the list
+            'is_paid_member', 
             'membership_expiry',
-            'qr_code_data'
+            'points',            # Ensure points is here
+            'attendance_percentage',
+            'fcm_token',    # <--- Needed for Notifications
+            'qr_code_data'  # <--- THIS WAS MISSING, CAUSING THE ERROR
         ]
-        
-    qr_code_data = serializers.SerializerMethodField()
 
     def get_qr_code_data(self, obj):
+        # We return the admission number to be generated into a QR code
         return obj.admission_number
 
-    # 3. This function runs every time data is requested
     def get_is_paid_member(self, obj):
-        # We explicitly call the model property here
+        # Runs the logic in models.py (checking the date)
         return obj.is_active_member
-    
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -41,9 +43,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'password', 'email', 'admission_number', 'phone_number', 'program', 'year_of_study']
 
     def create(self, validated_data):
-        # We use create_user to automatically hash the password
         user = User.objects.create_user(
-            username=validated_data['username'], # Usually Admission No
+            username=validated_data['username'],
             password=validated_data['password'],
             email=validated_data.get('email', ''),
             admission_number=validated_data.get('admission_number', ''),
@@ -51,14 +52,31 @@ class RegisterSerializer(serializers.ModelSerializer):
             program=validated_data.get('program', ''),
             year_of_study=validated_data.get('year_of_study', 1)
         )
-        return user    
+        return user
 
 class EventSerializer(serializers.ModelSerializer):
+    has_rsvped = serializers.SerializerMethodField()
     class Meta:
         model = Event
         fields = '__all__'
+        
+    def get_has_rsvped(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return obj.attendees.filter(id=user.id).exists()
+        return False
+    
+class ResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resource
+        fields = '__all__'        
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
+        fields = '__all__'
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
         fields = '__all__'

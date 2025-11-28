@@ -1,24 +1,25 @@
-from datetime import timedelta
 from django.shortcuts import render
 from django.utils import timezone
-from rest_framework import viewsets, status, generics # <--- Ensure 'generics' is here
+from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
+# 1. IMPORT 'action' (lowercase)
+from rest_framework.decorators import api_view, permission_classes, action 
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
-from .models import User, Event, Payment
-# Ensure RegisterSerializer is imported
-from .serializers import UserSerializer, EventSerializer, PaymentSerializer, RegisterSerializer 
+from .models import User, Event, Payment, Resource, Announcement
+from .serializers import (
+    UserSerializer, EventSerializer, PaymentSerializer, 
+    RegisterSerializer, ResourceSerializer, AnnouncementSerializer
+)
 from .payhero_utils import initiate_payhero_push
 
 # --- STANDARD VIEWSETS ---
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all() # Needed for the Router
+    queryset = User.objects.all()
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        # Allow filtering by username: /api/users/?username=newto
         queryset = User.objects.all()
         username = self.request.query_params.get('username')
         if username is not None:
@@ -26,8 +27,70 @@ class UserViewSet(viewsets.ModelViewSet):
         return queryset
 
 class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all()
+    queryset = Event.objects.all().order_by('date')
     serializer_class = EventSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    # 2. USE '@action' (lowercase)
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny]) # <--- AllowAny
+    def rsvp(self, request, pk=None):
+        event = self.get_object()
+        
+        # Get User ID from the App payload
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'User ID required'}, status=400)
+            
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        
+        # Toggle Logic
+        if event.attendees.filter(id=user.id).exists():
+            event.attendees.remove(user)
+            return Response({'status': 'RSVP Cancelled', 'joined': False})
+        else:
+            event.attendees.add(user)
+            return Response({'status': 'RSVP Successful', 'joined': True})
+
+    # 2. Attendance/Scan Logic (UPDATED)
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny]) # <--- AllowAny
+    def check_in(self, request, pk=None):
+        event = self.get_object()
+        
+        # Get User ID from App
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'User ID required'}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        if event.checked_in_users.filter(id=user.id).exists():
+            return Response({'message': 'Already checked in!'}, status=400)
+        
+        event.checked_in_users.add(user)
+        
+        # Award Points
+        user.points += 20
+        user.save()
+
+        return Response({
+            'message': 'Check-in Successful! +20 Points', 
+            'new_points': user.points
+        })
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+class AnnouncementViewSet(viewsets.ModelViewSet):
+    queryset = Announcement.objects.filter(is_active=True).order_by('-date_posted')
+    serializer_class = AnnouncementSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -36,10 +99,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
 # --- CUSTOM VIEWS ---
 
-class RegisterView(generics.CreateAPIView): # <--- USE 'generics', NOT 'Generic'
-    """
-    Public Endpoint for User Registration
-    """
+class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
@@ -49,25 +109,22 @@ class InitiatePaymentView(APIView):
 
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone')
-        amount = 10 
+        user_id = request.data.get('user_id')
+        amount = 500 
 
-        if not phone_number:
-            return Response({"error": "Phone number is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not phone_number or not user_id:
+            return Response({"error": "Phone and User ID are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. FIND THE REAL USER MANUALLY
         try:
-            # We search for the student who owns this phone number
-            student_user = User.objects.get(phone_number=phone_number)
+            student_user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response({"error": "No student found with this phone number. Please check your profile."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 2. Create Unique Reference using the found user's ID
         external_reference = f"dita-pay-{student_user.id}-{int(timezone.now().timestamp())}"
 
-        # 3. Create Payment Record
         try:
             Payment.objects.create(
-                student=student_user, # <--- CRITICAL FIX: Use the user we found in DB
+                student=student_user,
                 phone_number=phone_number,
                 amount=amount,
                 external_reference=external_reference,
@@ -76,7 +133,6 @@ class InitiatePaymentView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 4. Trigger PayHero
         payhero_response = initiate_payhero_push(phone_number, amount, external_reference)
 
         if not payhero_response:
@@ -109,18 +165,19 @@ class PayHeroCallbackView(APIView):
             payment.save()
 
             student = payment.student
+            
+            # SEMESTER LOGIC (120 Days)
+            from datetime import timedelta
             now = timezone.now()
-            semester_length = timedelta(days=120) 
+            semester_length = timedelta(days=120)
 
             if student.membership_expiry and student.membership_expiry > now:
-                # Extend existing membership
                 student.membership_expiry += semester_length
             else:
-                # New or Renewing membership
                 student.membership_expiry = now + semester_length
             
             student.save()
-            print(f"SUCCESS: Membership extended for {student.username} until {student.membership_expiry}")
+            print(f"SUCCESS: Membership extended for {student.username}")
         else:
             payment.status = 'failed'
             payment.save()

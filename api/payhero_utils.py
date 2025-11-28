@@ -18,7 +18,7 @@ def initiate_payhero_push(phone_number, amount, external_reference):
     channel_id = '3145'
     
     # Callback URL construction
-    base_url = os.getenv('BACKEND_URL', 'https://11a8bf59c1b2.ngrok-free.app') 
+    base_url = os.getenv('BACKEND_URL', 'https://dita-app-backend.onrender.com') 
     callback_url = f"{base_url}/api/mpesa/callback/"
 
     headers = {

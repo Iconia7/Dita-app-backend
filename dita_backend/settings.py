@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+import firebase_admin
+from firebase_admin import credentials
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,6 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-3gkyvhz&#f%-8*8n!o2#ur3s2gv(h4#@tai-wsywj__=nxr^hq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# TODO: Set this to False when deploying to production for real
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -140,4 +143,28 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
- 
+
+
+# ==========================================
+#  GOOGLE / FIREBASE CREDENTIALS CONFIG
+# ==========================================
+
+# Check if running on Render
+if os.environ.get('RENDER'):
+    # Render stores Secret Files in /etc/secrets/
+    GOOGLE_CREDENTIALS_PATH = '/etc/secrets/serviceAccountKey.json'
+else:
+    # Local development path
+    GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
+
+# Initialize Firebase Admin
+if not firebase_admin._apps:
+    try:
+        if os.path.exists(GOOGLE_CREDENTIALS_PATH):
+            cred = credentials.Certificate(GOOGLE_CREDENTIALS_PATH)
+            firebase_admin.initialize_app(cred)
+            print(f"✅ Firebase initialized successfully using: {GOOGLE_CREDENTIALS_PATH}")
+        else:
+            print(f"⚠️ Warning: serviceAccountKey.json not found at {GOOGLE_CREDENTIALS_PATH}")
+    except Exception as e:
+        print(f"❌ Error initializing Firebase: {e}")

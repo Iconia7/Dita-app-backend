@@ -9,28 +9,19 @@ class ApiConfig(AppConfig):
     name = 'api'
 
     def ready(self):
-        # Only initialize if not already initialized
+        # 1. Initialize Firebase (Your existing logic)
         if not firebase_admin._apps:
             try:
-                # Get path from settings
                 cred_path = getattr(settings, 'GOOGLE_CREDENTIALS_PATH', None)
-                
                 if cred_path and os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
                     print(f"✅ Firebase initialized successfully in apps.py")
                 else:
                     print(f"❌ ERROR: serviceAccountKey.json NOT FOUND at: {cred_path}")
-                    
-                    # DEBUGGING: List files in the secrets directory to check for typos
-                    if os.environ.get('RENDER'):
-                        secret_dir = '/etc/secrets/'
-                        if os.path.exists(secret_dir):
-                            print(f"📂 Contents of {secret_dir}: {os.listdir(secret_dir)}")
-                        else:
-                            print(f"❌ Directory {secret_dir} does not exist!")
-
             except Exception as e:
                 print(f"❌ Firebase Initialization Failed: {e}")
-                
-                import api.signals
+
+        # 2. IMPORT SIGNALS (THIS IS CRITICAL)
+        # Without this line, your signals.py file is ignored!
+        import api.signals

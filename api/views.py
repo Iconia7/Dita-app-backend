@@ -1,11 +1,15 @@
-from django.shortcuts import render
+from datetime import timedelta
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+# DRF Imports
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
-# 1. IMPORT 'action' (lowercase)
-from rest_framework.decorators import api_view, permission_classes, action 
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+
+# Local Imports
 from .models import RSVP, User, Event, Payment, Resource, Announcement
 from .serializers import (
     UserSerializer, EventSerializer, PaymentSerializer, 
@@ -13,79 +17,38 @@ from .serializers import (
 )
 from .payhero_utils import initiate_payhero_push
 
-# --- STANDARD VIEWSETS ---
-@api_view(['GET'])
-def get_events(request):
-    # Get events that haven't happened yet (optional filter)
-    # events = Event.objects.filter(date__gte=datetime.now()).order_by('date')
-    
-    # For now, just get all events, newest first
-    events = Event.objects.all().order_by('date')
-    serializer = EventSerializer(events, many=True, context={'request': request})
-    return Response(serializer.data)
 
-@api_view(['POST'])
-def rsvp_event(request, event_id):
-    user_id = request.data.get('user_id')
-    try:
-        event = Event.objects.get(id=event_id)
-        user = User.objects.get(id=user_id)
-        
-        # Toggle RSVP (If exists delete, if not create)
-        rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
-        if not created:
-            rsvp.delete()
-            return Response({"status": "un-rsvped", "message": "RSVP cancelled"})
-            
-        return Response({"status": "rsvped", "message": "RSVP successful"})
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
-    
+# ==========================================
+#  STANDARD VIEWSETS (CRUD)
+# ==========================================
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
     def get_queryset(self):
+        # Allow filtering by username: /api/users/?username=Newton
         queryset = User.objects.all()
         username = self.request.query_params.get('username')
         if username is not None:
             queryset = queryset.filter(username=username)
         return queryset
 
+
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('date')
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    # 2. USE '@action' (lowercase)
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny]) # <--- AllowAny
-    def rsvp(self, request, pk=None):
-        event = self.get_object()
-        
-        # Get User ID from the App payload
-        user_id = request.data.get('user_id')
-        if not user_id:
-            return Response({'error': 'User ID required'}, status=400)
-            
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=404)
-        
-        # Toggle Logic
-        if event.attendees.filter(id=user.id).exists():
-            event.attendees.remove(user)
-            return Response({'status': 'RSVP Cancelled', 'joined': False})
-        else:
-            event.attendees.add(user)
-            return Response({'status': 'RSVP Successful', 'joined': True})
+    # --- Custom Actions inside ViewSet ---
 
-    # 2. Attendance/Scan Logic (UPDATED)
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny]) # <--- AllowAny
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def check_in(self, request, pk=None):
+        """
+        QR Code Scan Endpoint: /api/events/{id}/check_in/
+        """
         event = self.get_object()
         
-        # Get User ID from App
         user_id = request.data.get('user_id')
         if not user_id:
             return Response({'error': 'User ID required'}, status=400)
@@ -95,9 +58,11 @@ class EventViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
 
+        # Check if already scanned
         if event.checked_in_users.filter(id=user.id).exists():
             return Response({'message': 'Already checked in!'}, status=400)
         
+        # Record attendance
         event.checked_in_users.add(user)
         
         # Award Points
@@ -108,27 +73,58 @@ class EventViewSet(viewsets.ModelViewSet):
             'message': 'Check-in Successful! +20 Points', 
             'new_points': user.points
         })
+    
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    def rsvp(self, request, pk=None):
+        """
+        RSVP Toggle Endpoint: /api/events/{id}/rsvp/
+        """
+        event = self.get_object()
+        user_id = request.data.get('user_id')
+        
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # Toggle RSVP (If exists delete, if not create)
+            rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
+            
+            if not created:
+                # If it existed, delete it (Cancel RSVP)
+                rsvp.delete()
+                return Response({"status": "un-rsvped", "message": "RSVP cancelled"})
+                
+            return Response({"status": "rsvped", "message": "RSVP successful"})
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
 
 class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+
 class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.filter(is_active=True).order_by('-date_posted')
     serializer_class = AnnouncementSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
 
-# --- CUSTOM VIEWS ---
+
+# ==========================================
+#  CUSTOM API VIEWS
+# ==========================================
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+
 
 class InitiatePaymentView(APIView):
     permission_classes = [AllowAny] 
@@ -193,7 +189,6 @@ class PayHeroCallbackView(APIView):
             student = payment.student
             
             # SEMESTER LOGIC (120 Days)
-            from datetime import timedelta
             now = timezone.now()
             semester_length = timedelta(days=120)
 

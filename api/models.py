@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -51,6 +52,11 @@ class Event(models.Model):
     venue = models.CharField(max_length=100)
     # This image will go to Cloudinary automatically
     image = models.ImageField(upload_to='events/', null=True, blank=True) 
+    checked_in_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, 
+        related_name='attended_events', # Gives reverse access via user.attended_events
+        blank=True
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
 

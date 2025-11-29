@@ -10,6 +10,7 @@ class User(AbstractUser):
     program = models.CharField(max_length=100, null=True, blank=True)
     year_of_study = models.IntegerField(default=1)
     phone_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     
     # CHANGE: Replace the boolean with a Date
     # We keep 'is_paid_member' but we won't set it manually anymore.

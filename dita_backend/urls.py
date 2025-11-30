@@ -17,6 +17,7 @@ router.register(r'payments', PaymentViewSet)
 router.register(r'announcements', AnnouncementViewSet)
 router.register(r'resources', ResourceViewSet)
 router.register(r'tasks', views.TaskViewSet, basename='task')
+router.register(r'exams', views.ExamViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

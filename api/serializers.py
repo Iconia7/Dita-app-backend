@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Resource, Task, User, Event, Payment, Announcement
+from .models import Exam, Resource, Task, User, Event, Payment, Announcement
 
 class UserSerializer(serializers.ModelSerializer):
     # 1. Custom Calculated Fields
@@ -41,6 +41,11 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = '__all__'
         read_only_fields = ['user', 'created_at']
+        
+class ExamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exam
+        fields = '__all__'        
                     
 
 class RegisterSerializer(serializers.ModelSerializer):

@@ -54,7 +54,17 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} - {self.user.username}"    
+        return f"{self.title} - {self.user.username}" 
+    
+class Exam(models.Model):
+    course_code = models.CharField(max_length=20, unique=True) # e.g. "ACS401"
+    title = models.CharField(max_length=200)
+    date = models.DateTimeField()
+    venue = models.CharField(max_length=100)
+    duration_hours = models.DecimalField(max_digits=4, decimal_places=2, default=2.0)
+
+    def __str__(self):
+        return f"{self.course_code} - {self.date.strftime('%d %b %H:%M')}"       
 
 class Event(models.Model):
     title = models.CharField(max_length=200)

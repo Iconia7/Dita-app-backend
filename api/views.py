@@ -10,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, Exam, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    ExamSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -33,7 +33,25 @@ class UserViewSet(viewsets.ModelViewSet):
         if username is not None:
             queryset = queryset.filter(username=username)
         return queryset
-    
+
+class ExamViewSet(viewsets.ReadOnlyModelViewSet): # ReadOnly because users don't edit exams
+    queryset = Exam.objects.all()
+    serializer_class = ExamSerializer # Make sure to import this
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        # Get the comma-separated list from URL
+        # Example: /api/exams/?codes=ACS401,INS411
+        codes_param = self.request.query_params.get('codes')
+        
+        if codes_param:
+            # Split "ACS401,INS411" into ['ACS401', 'INS411']
+            # Use .upper() to handle case sensitivity
+            codes_list = [c.strip().upper() for c in codes_param.split(',')]
+            return Exam.objects.filter(course_code__in=codes_list).order_by('date')
+            
+        return Exam.objects.none() # Return nothing if no codes provided
+        
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [AllowAny] 

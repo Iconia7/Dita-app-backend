@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'cloudinary_storage',
     'cloudinary',
+    'import_export',
     'rest_framework',   # API Framework
     'corsheaders',      # Allows Flutter to talk to Django
     'api',

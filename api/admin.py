@@ -1,12 +1,26 @@
+from import_export import resources  # <--- THIS IS THE CORRECT ONE
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from import_export.admin import ImportExportModelAdmin
 from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
+
+class ExamResource(resources.ModelResource):
+    class Meta:
+        model = Exam
+        import_id_fields = ('course_code',) # Use course code to update existing rows
+        fields = ('course_code', 'title', 'date', 'venue', 'duration_hours')
+
+@admin.register(Exam)
+class ExamAdmin(ImportExportModelAdmin):
+    resource_class = ExamResource
+    list_display = ('course_code', 'title', 'date', 'venue')
+    search_fields = ('course_code', 'title')
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):

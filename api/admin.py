@@ -4,9 +4,15 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'due_date', 'is_completed', 'created_at')
+    list_filter = ('is_completed', 'due_date')
+    search_fields = ('title', 'user__username')
 # 1. Custom User Admin
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):

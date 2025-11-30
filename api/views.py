@@ -36,7 +36,6 @@ class UserViewSet(viewsets.ModelViewSet):
     
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    # FIX 1: Allow the app to access this without a token header
     permission_classes = [AllowAny] 
 
     def get_queryset(self):

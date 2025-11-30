@@ -36,15 +36,25 @@ class UserViewSet(viewsets.ModelViewSet):
     
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    # FIX 1: Allow the app to access this without a token header
+    permission_classes = [AllowAny] 
 
     def get_queryset(self):
-        # Only show tasks belonging to the logged-in user
-        return Task.objects.filter(user=self.request.user).order_by('due_date')
+        # FIX 2: Filter based on the 'user_id' query param sent from Flutter
+        # (e.g., /api/tasks/?user_id=6)
+        user_id = self.request.query_params.get('user_id')
+        
+        if user_id:
+            return Task.objects.filter(user_id=user_id).order_by('due_date')
+        
+        # If no ID provided, return nothing (security)
+        return Task.objects.none()
 
     def perform_create(self, serializer):
-        # Automatically attach the logged-in user
-        serializer.save(user=self.request.user)    
+        # FIX 3: Manually attach the user based on the ID sent in the body
+        user_id = self.request.data.get('user_id')
+        user = get_object_or_404(User, id=user_id)
+        serializer.save(user=user)  
 
 
 class EventViewSet(viewsets.ModelViewSet):

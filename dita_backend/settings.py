@@ -92,8 +92,14 @@ DATABASES = {
 }
 
 # If we are on Render, use PostgreSQL
-db_from_env = dj_database_url.config(conn_max_age=600)
-DATABASES['default'].update(db_from_env)
+if os.environ.get('RENDER'):
+    import dj_database_url
+    
+    db_from_env = dj_database_url.config(
+        conn_max_age=0,    # <--- CHANGE THIS to 0 (forces new connection every time)
+        ssl_require=True
+    )
+    DATABASES['default'].update(db_from_env)
 
 
 # Password validation

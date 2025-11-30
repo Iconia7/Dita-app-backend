@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Resource, User, Event, Payment, Announcement
+from .models import Resource, Task, User, Event, Payment, Announcement
 
 class UserSerializer(serializers.ModelSerializer):
     # 1. Custom Calculated Fields
@@ -35,6 +35,13 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_paid_member(self, obj):
         # Runs the logic in models.py (checking the date)
         return obj.is_active_member
+    
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']
+                    
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

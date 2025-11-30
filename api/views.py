@@ -10,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, User, Event, Payment, Resource, Announcement
+from .models import RSVP, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    UserSerializer, EventSerializer, PaymentSerializer, 
+    TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -33,6 +33,18 @@ class UserViewSet(viewsets.ModelViewSet):
         if username is not None:
             queryset = queryset.filter(username=username)
         return queryset
+    
+class TaskViewSet(viewsets.ModelViewSet):
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only show tasks belonging to the logged-in user
+        return Task.objects.filter(user=self.request.user).order_by('due_date')
+
+    def perform_create(self, serializer):
+        # Automatically attach the logged-in user
+        serializer.save(user=self.request.user)    
 
 
 class EventViewSet(viewsets.ModelViewSet):

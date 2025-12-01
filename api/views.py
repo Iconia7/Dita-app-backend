@@ -45,15 +45,24 @@ class UserViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def check_update(request):
-    latest_update = AppUpdate.objects.first() # Get the newest one
+    latest_update = AppUpdate.objects.first()
     if latest_update:
+        # 1. Get the relative URL (e.g., /media/updates/v1.apk)
+        relative_url = latest_update.apk_file.url
+
+        # 2. Convert it to a full absolute URL if it isn't one already
+        if not relative_url.startswith('http'):
+            download_url = request.build_absolute_uri(relative_url)
+        else:
+            download_url = relative_url
+
         return Response({
             'version_code': latest_update.version_code,
-            'download_url': latest_update.apk_file.url,
+            'download_url': download_url,  # <--- Send the Full URL
             'release_notes': latest_update.release_notes,
             'is_mandatory': latest_update.is_mandatory
         })
-    return Response({}, status=404)    
+    return Response({}, status=404)   
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exam.objects.all()

@@ -42,23 +42,29 @@ class UserViewSet(viewsets.ModelViewSet):
             
         return queryset
 
-class ExamViewSet(viewsets.ReadOnlyModelViewSet): # ReadOnly because users don't edit exams
+class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exam.objects.all()
-    serializer_class = ExamSerializer # Make sure to import this
+    serializer_class = ExamSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        # Get the comma-separated list from URL
-        # Example: /api/exams/?codes=ACS401,INS411
         codes_param = self.request.query_params.get('codes')
         
         if codes_param:
-            # Split "ACS401,INS411" into ['ACS401', 'INS411']
-            # Use .upper() to handle case sensitivity
-            codes_list = [c.strip().upper() for c in codes_param.split(',')]
-            return Exam.objects.filter(course_code__in=codes_list).order_by('date')
+            # 1. Clean the inputs (e.g., "ACS 401" -> "ACS401")
+            codes_list = [c.strip().upper().replace(" ", "") for c in codes_param.split(',')]
             
-        return Exam.objects.none() # Return nothing if no codes provided
+            # 2. Build a "Smart" Query
+            # We want: Code STARTS WITH "ACS401" OR STARTS WITH "INS411"
+            query = Q()
+            for code in codes_list:
+                if code: # Avoid empty strings
+                    # 'istartswith' is case-insensitive and handles suffixes like A, B, T, X
+                    query |= Q(course_code__istartswith=code)
+            
+            return Exam.objects.filter(query).order_by('date')
+            
+        return Exam.objects.none()
         
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer

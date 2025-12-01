@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Q  # <--- Add this at the top
 
 # DRF Imports
 from rest_framework import viewsets, status, generics
@@ -27,11 +28,18 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        # Allow filtering by username: /api/users/?username=Newton
         queryset = User.objects.all()
-        username = self.request.query_params.get('username')
-        if username is not None:
-            queryset = queryset.filter(username=username)
+        
+        # Get the input from the app (it might be a username OR an admission number)
+        search_term = self.request.query_params.get('username')
+        
+        if search_term is not None:
+            # Filter: matches Username OR matches Admission Number (Case Insensitive)
+            queryset = queryset.filter(
+                Q(username__iexact=search_term) | 
+                Q(admission_number__iexact=search_term)
+            )
+            
         return queryset
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet): # ReadOnly because users don't edit exams

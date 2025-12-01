@@ -84,7 +84,7 @@ class EventSerializer(serializers.ModelSerializer):
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
-        fields = '__all__'        
+        fields = ['id', 'title', 'resource_type', 'link', 'file', 'description']       
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:

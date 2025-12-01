@@ -100,7 +100,8 @@ class Resource(models.Model):
     ]
     title = models.CharField(max_length=200)
     resource_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    link = models.URLField(help_text="Link to Google Drive or Website")
+    link = models.URLField(help_text="Link to Google Drive or Website", blank=True, null=True)
+    file = models.FileField(upload_to='resources/', blank=True, null=True)
     description = models.CharField(max_length=255, blank=True)
     
     def __str__(self):

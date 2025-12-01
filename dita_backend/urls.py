@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/pay/', InitiatePaymentView.as_view(), name='pay'),
     path('api/mpesa/callback/', PayHeroCallbackView.as_view(), name='callback'),
+    path('api/updates/latest/', views.check_update, name='check_update'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

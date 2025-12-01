@@ -83,6 +83,20 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+    
+class AppUpdate(models.Model):
+    version_code = models.IntegerField(help_text="Must match build.gradle version code") # e.g. 5
+    version_name = models.CharField(max_length=20) # e.g. "1.0.5"
+    apk_file = models.FileField(upload_to='updates/') # Goes to Cloudinary
+    is_mandatory = models.BooleanField(default=False) # Force update?
+    release_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at'] # Newest first
+
+    def __str__(self):
+        return f"v{self.version_name} ({self.version_code})"    
 
 class RSVP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

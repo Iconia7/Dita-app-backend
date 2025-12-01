@@ -6,9 +6,12 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, AppUpdate, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
+@admin.register(AppUpdate)
+class AppUpdateAdmin(admin.ModelAdmin):
+    list_display = ('version_name', 'version_code', 'is_mandatory', 'created_at')
 
 class ExamResource(resources.ModelResource):
     class Meta:

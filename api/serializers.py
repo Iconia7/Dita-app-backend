@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Exam, Resource, Task, User, Event, Payment, Announcement
+from .models import AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
 
 class UserSerializer(serializers.ModelSerializer):
     # 1. Custom Calculated Fields
@@ -35,6 +35,11 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_paid_member(self, obj):
         # Runs the logic in models.py (checking the date)
         return obj.is_active_member
+    
+class AppUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppUpdate
+        fields = ['id', 'version_code', 'version_name', 'apk_file', 'is_mandatory', 'release_notes', 'created_at']    
     
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, Exam, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, AppUpdate, Exam, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
     ExamSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
@@ -41,6 +41,19 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             
         return queryset
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def check_update(request):
+    latest_update = AppUpdate.objects.first() # Get the newest one
+    if latest_update:
+        return Response({
+            'version_code': latest_update.version_code,
+            'download_url': latest_update.apk_file.url,
+            'release_notes': latest_update.release_notes,
+            'is_mandatory': latest_update.is_mandatory
+        })
+    return Response({}, status=404)    
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exam.objects.all()

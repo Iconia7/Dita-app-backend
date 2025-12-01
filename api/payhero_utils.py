@@ -15,7 +15,7 @@ def initiate_payhero_push(phone_number, amount, external_reference):
     
     # Ensure these are set in your environment variables or hardcoded for testing
     auth_header = 'Basic OUdjMEMxdk9xbGRWOHJFamR1Ykg6Y2FSOVI5b0NlR1FMQUtsbWlWbWZLa1A5NlZJUzY3M1N2b1JJampBaA=='
-    channel_id = '3145'
+    channel_id = '4434'
     
     # Callback URL construction
     base_url = os.getenv('BACKEND_URL', 'https://dita-app-backend.onrender.com') 

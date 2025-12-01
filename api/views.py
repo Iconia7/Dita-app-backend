@@ -171,7 +171,7 @@ class InitiatePaymentView(APIView):
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone')
         user_id = request.data.get('user_id')
-        amount = 10 
+        amount = 200 
 
         if not phone_number or not user_id:
             return Response({"error": "Phone and User ID are required."}, status=status.HTTP_400_BAD_REQUEST)

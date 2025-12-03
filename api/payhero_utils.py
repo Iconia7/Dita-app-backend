@@ -14,8 +14,8 @@ def initiate_payhero_push(phone_number, amount, external_reference):
     api_url = "https://backend.payhero.co.ke/api/v2/payments"
     
     # Ensure these are set in your environment variables or hardcoded for testing
-    auth_header = 'Basic OUdjMEMxdk9xbGRWOHJFamR1Ykg6Y2FSOVI5b0NlR1FMQUtsbWlWbWZLa1A5NlZJUzY3M1N2b1JJampBaA=='
-    channel_id = '4434'
+    auth_header = os.getenv('AUTH_HEADER')
+    channel_id = os.getenv('CHANNEL_ID')
     
     # Callback URL construction
     base_url = os.getenv('BACKEND_URL', 'https://dita-app-backend.onrender.com') 

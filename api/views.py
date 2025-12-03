@@ -1,9 +1,11 @@
 from datetime import timedelta
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
+from django.core.files.storage import FileSystemStorage
 from django.db.models import Q  # <--- Add this at the top
 
 # DRF Imports
+from dita_backend.utils import process_exam_excel
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes
@@ -22,6 +24,43 @@ from .payhero_utils import initiate_payhero_push
 # ==========================================
 #  STANDARD VIEWSETS (CRUD)
 # ==========================================
+
+def upload_timetable(request):
+    context = {}
+    if request.method == 'POST' and request.FILES.get('myfile'):
+        myfile = request.FILES['myfile']
+        fs = FileSystemStorage()
+        filename = fs.save(myfile.name, myfile)
+        file_path = fs.path(filename)
+        
+        try:
+            # 1. Process Excel
+            exams_data = process_exam_excel(file_path)
+            
+            # 2. DELETE OLD DATA (Safe way to update timetable)
+            Exam.objects.all().delete()
+            
+            # 3. Insert New Data
+            exam_objects = [
+                Exam(
+                    course_code=item['course_code'],
+                    title=item['title'],
+                    date=item['date'],          # datetime object
+                    end_time=item['end_time'],
+                    venue=item['venue'],
+                    duration_hours=item['duration_hours']
+                ) for item in exams_data
+            ]
+            
+            Exam.objects.bulk_create(exam_objects)
+            context['success'] = f"Success! Imported {len(exam_objects)} exams."
+            
+        except Exception as e:
+            context['error'] = f"Error: {str(e)}"
+        
+        fs.delete(filename)
+        
+    return render(request, 'upload.html', context)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -93,20 +132,22 @@ class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        # If no params, return all (or none, depending on your preference)
+        # Your previous code returned none if no params, which is good for performance
         codes_param = self.request.query_params.get('codes')
         
         if codes_param:
             # 1. Clean the inputs (e.g., "ACS 401" -> "ACS401")
             codes_list = [c.strip().upper().replace(" ", "") for c in codes_param.split(',')]
             
-            # 2. Build a "Smart" Query
-            # We want: Code STARTS WITH "ACS401" OR STARTS WITH "INS411"
+            # 2. Build the "Smart" Query
             query = Q()
             for code in codes_list:
-                if code: # Avoid empty strings
-                    # 'istartswith' is case-insensitive and handles suffixes like A, B, T, X
+                if code: 
+                    # Matches "ACS401", "ACS401A", "ACS401T"
                     query |= Q(course_code__istartswith=code)
             
+            # Order by date so the app shows them chronologically
             return Exam.objects.filter(query).order_by('date')
             
         return Exam.objects.none()

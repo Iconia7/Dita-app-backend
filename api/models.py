@@ -57,14 +57,22 @@ class Task(models.Model):
         return f"{self.title} - {self.user.username}" 
     
 class Exam(models.Model):
-    course_code = models.CharField(max_length=20, unique=True) # e.g. "ACS401"
-    title = models.CharField(max_length=200)
-    date = models.DateTimeField()
+    # REMOVED unique=True so we can have multiple venues for the same exam
+    course_code = models.CharField(max_length=50) 
+    title = models.CharField(max_length=200, blank=True, null=True)
+    
+    # Combined Date + Start Time (What Flutter Expects)
+    date = models.DateTimeField() 
+    
+    # We can keep end_time separate for reference, Flutter will just ignore it if it doesn't need it
+    end_time = models.TimeField(null=True, blank=True)
+    
     venue = models.CharField(max_length=100)
     duration_hours = models.DecimalField(max_digits=4, decimal_places=2, default=2.0)
 
     def __str__(self):
-        return f"{self.course_code} - {self.date.strftime('%d %b %H:%M')}"       
+        # Using the format you prefer
+        return f"{self.course_code} - {self.date.strftime('%d %b %H:%M')}"      
 
 class Event(models.Model):
     title = models.CharField(max_length=200)

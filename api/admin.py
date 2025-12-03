@@ -79,6 +79,7 @@ class AnnouncementAdmin(admin.ModelAdmin):
     list_display = ('title', 'date_posted', 'is_active')
     list_filter = ('is_active', 'date_posted')
     search_fields = ('title', 'message')
+     
 
 # 5. Resource Admin (NEW)
 @admin.register(Resource)

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Timetable</title>
+</head>
+<body>
+    <h1>Upload Exam Timetable</h1>
+    
+    {% if success %}
+        <h3 style="color: green;">{{ success }}</h3>
+    {% endif %}
+    
+    {% if error %}
+        <h3 style="color: red;">{{ error }}</h3>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="myfile" required>
+        <button type="submit">Upload & Process</button>
+    </form>
+</body>
+</html>

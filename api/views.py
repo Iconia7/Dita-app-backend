@@ -62,7 +62,30 @@ def check_update(request):
             'release_notes': latest_update.release_notes,
             'is_mandatory': latest_update.is_mandatory
         })
-    return Response({}, status=404)   
+    return Response({}, status=404) 
+
+@api_view(['POST'])
+@permission_classes([AllowAny]) # Using AllowAny so we can manually check user_id
+def change_password(request):
+    user_id = request.data.get('user_id')
+    old_pass = request.data.get('old_password')
+    new_pass = request.data.get('new_password')
+
+    if not user_id or not old_pass or not new_pass:
+        return Response({'error': 'Missing fields'}, status=400)
+
+    user = get_object_or_404(User, id=user_id)
+
+    # 1. Verify Old Password
+    if not user.check_password(old_pass):
+        return Response({'error': 'Wrong old password'}, status=400)
+
+    # 2. Set New Password (Hashes it automatically)
+    user.set_password(new_pass)
+    user.save()
+
+    return Response({'message': 'Password updated successfully!'})
+  
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exam.objects.all()
@@ -172,6 +195,17 @@ class EventViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response({"error": str(e)}, status=400)
+    def get_queryset(self):
+        # 1. Check for filter
+        attended_by = self.request.query_params.get('attended_by')
+        
+        if attended_by:
+            # HISTORY MODE: Filter by user, show NEWEST first (Descending)
+            return Event.objects.filter(checked_in_users__id=attended_by).order_by('-date')
+        
+        # UPCOMING MODE: Show ALL, show SOONEST first (Ascending)
+        # You might also want to hide past events: .filter(date__gte=timezone.now())
+        return Event.objects.all().order_by('date')    
 
 
 class ResourceViewSet(viewsets.ModelViewSet):

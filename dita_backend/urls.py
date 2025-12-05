@@ -32,8 +32,8 @@ urlpatterns = [
     path('api/updates/latest/', views.check_update, name='check_update'),
     path('api/change-password/', views.change_password, name='change_password'),
     path('upload-timetable/', views.upload_timetable, name='upload_timetable'),
-    path('auth/request-reset/', views.request_password_reset),
-    path('auth/confirm-reset/', views.reset_password_with_otp),
+    path('auth/request-reset/', views.request_password_reset, name='request-reset'),
+    path('auth/confirm-reset/', views.confirm_password_reset, name='confirm-reset'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

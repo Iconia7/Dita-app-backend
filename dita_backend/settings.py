@@ -187,5 +187,5 @@ ANYMAIL = {
     "MAILJET_API_KEY": "c4952722b77c1bc3499b70a351171dd8",
     "MAILJET_SECRET_KEY": "1a689046ad40425f30865f7005cb90a3",
 }
-DEFAULT_FROM_EMAIL = "mwanginewton@gmail.com"  
+DEFAULT_FROM_EMAIL = "mwanginewton239@gmail.com"  
 SERVER_EMAIL = "mwanginewton239@gmail.com"

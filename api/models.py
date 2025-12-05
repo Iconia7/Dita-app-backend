@@ -131,7 +131,16 @@ class Resource(models.Model):
     description = models.CharField(max_length=255, blank=True)
     
     def __str__(self):
-        return self.title  
+        return self.title 
+    
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_valid(self):
+        # Valid for 10 minutes
+        return self.created_at >= timezone.now() - timezone.timedelta(minutes=10)     
 
 class Payment(models.Model):
     STATUS_CHOICES = [

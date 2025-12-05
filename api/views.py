@@ -1,5 +1,6 @@
 from datetime import timedelta
 import random
+import threading
 from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
@@ -28,6 +29,29 @@ from .payhero_utils import initiate_payhero_push
 #  STANDARD VIEWSETS (CRUD)
 # ==========================================
 
+class EmailThread(threading.Thread):
+    def __init__(self, subject, message, from_email, recipient_list):
+        self.subject = subject
+        self.message = message
+        self.from_email = from_email
+        self.recipient_list = recipient_list
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            print("⏳ Attempting to send email in background...")
+            send_mail(
+                self.subject,
+                self.message,
+                self.from_email,
+                self.recipient_list,
+                fail_silently=False,
+            )
+            print("✅ Email sent successfully!")
+        except Exception as e:
+            print(f"❌ Error sending email: {e}")
+
+# --- 2. Updated View ---
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_password_reset(request):
@@ -38,29 +62,28 @@ def request_password_reset(request):
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        # Security: Don't reveal if user exists, just pretend it worked
+        # Pretend it worked for security
         return Response({'message': 'If an account exists, an OTP has been sent.'})
 
     # Generate 6-digit OTP
     otp = str(random.randint(100000, 999999))
 
-    # Save OTP (delete old ones first)
+    # Save OTP
     PasswordResetOTP.objects.filter(user=user).delete()
     PasswordResetOTP.objects.create(user=user, otp=otp)
 
-    # Send Email
-    try:
-        send_mail(
-            'DITA App Password Reset',
-            f'Your verification code is: {otp}. It expires in 10 minutes.',
-            settings.EMAIL_HOST_USER,
-            [email],
-            fail_silently=False,
-        )
-    except Exception as e:
-        print(f"Email Error: {e}")
-        return Response({'error': 'Failed to send email'}, status=500)
+    # --- 3. Send Email in Background (Non-Blocking) ---
+    subject = 'DITA App Password Reset'
+    message = f'Your verification code is: {otp}. It expires in 10 minutes.'
+    
+    EmailThread(
+        subject, 
+        message, 
+        settings.EMAIL_HOST_USER, 
+        [email]
+    ).start()
 
+    # Return success immediately without waiting for Gmail
     return Response({'message': 'OTP sent successfully'})
 
 @api_view(['POST'])

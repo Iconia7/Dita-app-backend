@@ -117,7 +117,11 @@ class RSVP(models.Model):
 class Resource(models.Model):
     TYPE_CHOICES = [
         ('PDF', 'PDF Document'),
-        ('PPT', 'Presentation'),
+        ('PPT', 'Presentation (PPT/Slides)'),
+        ('DOC', 'Word Document'),       # New
+        ('XLS', 'Excel Spreadsheet'),   # New
+        ('IMG', 'Image'),               # New
+        ('ZIP', 'Zip Archive'),         # New
         ('LINK', 'External Link'),
     ]
     title = models.CharField(max_length=200)
@@ -127,7 +131,7 @@ class Resource(models.Model):
     description = models.CharField(max_length=255, blank=True)
     
     def __str__(self):
-        return self.title    
+        return self.title  
 
 class Payment(models.Model):
     STATUS_CHOICES = [

@@ -63,7 +63,7 @@ def request_password_reset(request):
         user = User.objects.get(email=email)
     except User.DoesNotExist:
         # Pretend it worked for security
-        return Response({'message': 'If an account exists, an OTP has been sent.'})
+        return Response({'error': 'Email not found. Please register first.'}, status=404)
 
     # Generate 6-digit OTP
     otp = str(random.randint(100000, 999999))
@@ -79,7 +79,7 @@ def request_password_reset(request):
     EmailThread(
         subject, 
         message, 
-        settings.EMAIL_HOST_USER, 
+        settings.DEFAULT_FROM_EMAIL, 
         [email]
     ).start()
 

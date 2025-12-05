@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'cloudinary_storage',
     'cloudinary',
+    'anymail',
     'import_export',
     'rest_framework',   # API Framework
     'corsheaders',      # Allows Flutter to talk to Django
@@ -181,11 +182,10 @@ else:
     GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
 
 # EMAIL CONFIGURATION
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587             # Change from 587 to 465
-EMAIL_USE_TLS = True       # Turn off TLS
-EMAIL_USE_SSL = False 
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = 'DITA App <noreply@dita.co.ke>'
+EMAIL_BACKEND = 'anymail.backends.mailjet.EmailBackend'
+ANYMAIL = {
+    "MAILJET_API_KEY": "c4952722b77c1bc3499b70a351171dd8",
+    "MAILJET_SECRET_KEY": "1a689046ad40425f30865f7005cb90a3",
+}
+DEFAULT_FROM_EMAIL = "mwanginewton@gmail.com"  
+SERVER_EMAIL = "mwanginewton239@gmail.com"

@@ -187,5 +187,5 @@ EMAIL_PORT = 587             # Change from 587 to 465
 EMAIL_USE_TLS = True       # Turn off TLS
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'mwanginewton239@gmail.com'  # <--- REPLACE THIS
-EMAIL_HOST_PASSWORD = 'kkuv kejd whaa crki' # <--- REPLACE THIS (Not your normal password!)
+EMAIL_HOST_PASSWORD = 'kkuvkejdwhaacrki' # <--- REPLACE THIS (Not your normal password!)
 DEFAULT_FROM_EMAIL = 'DITA App <noreply@dita.co.ke>'

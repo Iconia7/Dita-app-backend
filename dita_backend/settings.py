@@ -180,3 +180,11 @@ else:
     # Local development path
     GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
 
+# EMAIL CONFIGURATION
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mwanginewton239@gmail.com'  # <--- REPLACE THIS
+EMAIL_HOST_PASSWORD = 'kkuv kejd whaa crki' # <--- REPLACE THIS (Not your normal password!)
+DEFAULT_FROM_EMAIL = 'DITA App <noreply@dita.co.ke>'

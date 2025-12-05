@@ -46,10 +46,26 @@ INSTALLED_APPS = [
     'cloudinary',
     'anymail',
     'import_export',
-    'rest_framework',   # API Framework
+    'rest_framework',
+    'rest_framework_simplejwt',# API Framework
     'corsheaders',      # Allows Flutter to talk to Django
     'api',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated', # Default to secure
+    ),
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30), # Long for student app convenience
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=60),
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

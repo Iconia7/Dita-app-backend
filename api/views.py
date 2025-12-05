@@ -4,6 +4,7 @@ import threading
 from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.utils import timezone
 from django.core.files.storage import FileSystemStorage
 from django.db.models import Q  # <--- Add this at the top
@@ -19,7 +20,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 # Local Imports
 from .models import RSVP, AppUpdate, Exam, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    ExamSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    ExamSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -28,6 +29,9 @@ from .payhero_utils import initiate_payhero_push
 # ==========================================
 #  STANDARD VIEWSETS (CRUD)
 # ==========================================
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 class EmailThread(threading.Thread):
     def __init__(self, subject, message, from_email, recipient_list):
@@ -194,27 +198,19 @@ def check_update(request):
     return Response({}, status=404) 
 
 @api_view(['POST'])
-@permission_classes([AllowAny]) # <--- CHANGE THIS
+@permission_classes([IsAuthenticated]) # <--- CHANGE THIS
 def change_password(request):
     # 1. Get the user from the Token, NOT the body
-    user_id = request.data.get('user_id')
+    user = request.user
     
     old_pass = request.data.get('old_password')
     new_pass = request.data.get('new_password')
 
-    if not user_id or not old_pass or not new_pass:
-        return Response({'error': 'Missing fields'}, status=400)
-
-    user = get_object_or_404(User, id=user_id)
-
-    # 1. Verify Old Password (This is your security layer now)
     if not user.check_password(old_pass):
         return Response({'error': 'Wrong old password'}, status=400)
 
-    # 2. Set New Password
     user.set_password(new_pass)
     user.save()
-
     return Response({'message': 'Password updated successfully!'})
   
 
@@ -246,24 +242,15 @@ class ExamViewSet(viewsets.ReadOnlyModelViewSet):
         
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    permission_classes = [AllowAny] 
+    permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
-        # FIX 2: Filter based on the 'user_id' query param sent from Flutter
-        # (e.g., /api/tasks/?user_id=6)
-        user_id = self.request.query_params.get('user_id')
-        
-        if user_id:
-            return Task.objects.filter(user_id=user_id).order_by('due_date')
-        
-        # If no ID provided, return nothing (security)
-        return Task.objects.none()
+        # Only show tasks belonging to the logged-in user
+        return Task.objects.filter(user=self.request.user).order_by('due_date')
 
     def perform_create(self, serializer):
-        # FIX 3: Manually attach the user based on the ID sent in the body
-        user_id = self.request.data.get('user_id')
-        user = get_object_or_404(User, id=user_id)
-        serializer.save(user=user)  
+        # Automatically attach the logged-in user
+        serializer.save(user=self.request.user)
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -273,21 +260,14 @@ class EventViewSet(viewsets.ModelViewSet):
 
     # --- Custom Actions inside ViewSet ---
 
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def check_in(self, request, pk=None):
         """
         QR Code Scan Endpoint: /api/events/{id}/check_in/
         """
         event = self.get_object()
         
-        user_id = request.data.get('user_id')
-        if not user_id:
-            return Response({'error': 'User ID required'}, status=400)
-
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=404)
+        user = request.user
 
         # Check if already scanned
         if event.checked_in_users.filter(id=user.id).exists():
@@ -305,27 +285,20 @@ class EventViewSet(viewsets.ModelViewSet):
             'new_points': user.points
         })
     
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def rsvp(self, request, pk=None):
         """
         RSVP Toggle Endpoint: /api/events/{id}/rsvp/
         """
         event = self.get_object()
-        user_id = request.data.get('user_id')
+        user = request.user
         
         try:
-            user = User.objects.get(id=user_id)
-            
-            # Toggle RSVP (If exists delete, if not create)
             rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
-            
             if not created:
-                # If it existed, delete it (Cancel RSVP)
                 rsvp.delete()
                 return Response({"status": "un-rsvped", "message": "RSVP cancelled"})
-                
             return Response({"status": "rsvped", "message": "RSVP successful"})
-            
         except Exception as e:
             return Response({"error": str(e)}, status=400)
     def get_queryset(self):
@@ -369,26 +342,22 @@ class RegisterView(generics.CreateAPIView):
 
 
 class InitiatePaymentView(APIView):
-    permission_classes = [AllowAny] 
+    permission_classes = [IsAuthenticated] 
 
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get('phone')
-        user_id = request.data.get('user_id')
+        user = request.user
         amount = 200 
 
-        if not phone_number or not user_id:
-            return Response({"error": "Phone and User ID are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not phone_number:
+            return Response({"error": "Phone Number is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            student_user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        external_reference = f"dita-pay-{student_user.id}-{int(timezone.now().timestamp())}"
+        external_reference = f"dita-pay-{user.id}-{int(timezone.now().timestamp())}"
 
         try:
             Payment.objects.create(
-                student=student_user,
+                student=user,
                 phone_number=phone_number,
                 amount=amount,
                 external_reference=external_reference,

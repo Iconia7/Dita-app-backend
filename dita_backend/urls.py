@@ -5,7 +5,7 @@ from django.conf.urls.static import static # <--- MAKE SURE THIS IS IMPORTED
 from api import views
 from rest_framework.routers import DefaultRouter
 from api.views import (
-    UserViewSet, EventViewSet, PaymentViewSet, 
+    MyTokenObtainPairView, UserViewSet, EventViewSet, PaymentViewSet, 
     InitiatePaymentView, PayHeroCallbackView, 
     RegisterView, AnnouncementViewSet, ResourceViewSet
 )
@@ -27,6 +27,7 @@ urlpatterns = [
     
     # Custom Endpoints
     path('api/register/', RegisterView.as_view(), name='register'),
+    path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/pay/', InitiatePaymentView.as_view(), name='pay'),
     path('api/mpesa/callback/', PayHeroCallbackView.as_view(), name='callback'),
     path('api/updates/latest/', views.check_update, name='check_update'),

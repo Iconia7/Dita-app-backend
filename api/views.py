@@ -171,22 +171,24 @@ def check_update(request):
     return Response({}, status=404) 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated]) # <--- CHANGE THIS
+@permission_classes([AllowAny]) # <--- CHANGE THIS
 def change_password(request):
     # 1. Get the user from the Token, NOT the body
-    user = request.user 
+    user_id = request.data.get('user_id')
     
     old_pass = request.data.get('old_password')
     new_pass = request.data.get('new_password')
 
-    if not old_pass or not new_pass:
+    if not user_id or not old_pass or not new_pass:
         return Response({'error': 'Missing fields'}, status=400)
 
-    # 2. Verify Old Password
+    user = get_object_or_404(User, id=user_id)
+
+    # 1. Verify Old Password (This is your security layer now)
     if not user.check_password(old_pass):
         return Response({'error': 'Wrong old password'}, status=400)
 
-    # 3. Set New Password
+    # 2. Set New Password
     user.set_password(new_pass)
     user.save()
 

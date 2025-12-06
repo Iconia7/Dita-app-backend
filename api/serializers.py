@@ -1,22 +1,41 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+from django.db.models import Q
 from .models import AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        data = super().validate(attrs)
+        # 1. Capture the input (User might type "Newton" or "22-1234")
+        login_input = attrs.get("username")
 
-        # Add custom data to the response
+        if login_input:
+            # 2. "Smart Search": Look for a user where Username OR Admission Number matches
+            user = User.objects.filter(
+                Q(username__iexact=login_input) |  # Case-insensitive username
+                Q(admission_number__iexact=login_input) # Case-insensitive admission no.
+            ).first()
+
+            if user:
+                # 3. The Switch: If found, use the REAL username for authentication
+                # This tricks the system into working even if they typed admission number
+                attrs['username'] = user.username
+            
+        # 4. Standard Password Check (Let the parent class handle the heavy lifting)
+        try:
+            data = super().validate(attrs)
+        except Exception:
+            # If password is wrong, this generic error is safer
+            raise AuthenticationFailed("Invalid credentials. Please check your password.")
+
+        # 5. Add your custom response data
         data['id'] = self.user.id
         data['username'] = self.user.username
         data['email'] = self.user.email
         data['admission_number'] = self.user.admission_number
         data['points'] = self.user.points
-        
-        # Add phone number if it exists (safe check)
         data['phone_number'] = getattr(self.user, 'phone_number', '')
 
-        # Add avatar URL if it exists
         if self.user.avatar:
             data['avatar'] = self.user.avatar.url
 

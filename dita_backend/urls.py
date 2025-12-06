@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/change-password/', views.change_password, name='change_password'),
     path('upload-timetable/', views.upload_timetable, name='upload_timetable'),
     path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/status/', views.system_status, name='system-status'),
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
 

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.db.models import Q
-from .models import AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
+from .models import AppConfig, AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -140,3 +140,8 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Announcement
         fields = '__all__'
+        
+class AppConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppConfig
+        fields = ['maintenance_mode', 'maintenance_title', 'maintenance_message']        

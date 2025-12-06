@@ -173,3 +173,19 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title    
+    
+class AppConfig(models.Model):
+    id = models.IntegerField(primary_key=True, default=1) # Forces only one row
+    maintenance_mode = models.BooleanField(default=False)
+    maintenance_title = models.CharField(max_length=100, default="System Under Maintenance")
+    maintenance_message = models.TextField(default="We are currently upgrading our servers to make DITA even better. Please check back in a few minutes!")
+
+    def save(self, *args, **kwargs):
+        self.id = 1 # Force ID to always be 1
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name_plural = "App Configuration"
+        
+    def __str__(self):
+        return f"Maintenance Mode: {'ON' if self.maintenance_mode else 'OFF'}"    

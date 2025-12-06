@@ -18,9 +18,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, AppUpdate, Exam, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, AppConfig, AppUpdate, Exam, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    ExamSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    AppConfigSerializer, ExamSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -225,6 +225,14 @@ def change_password(request):
     user.save()
 
     return Response({'message': 'Password updated successfully!'})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def system_status(request):
+    # Get the config object (or create default if it doesn't exist)
+    config, created = AppConfig.objects.get_or_create(id=1)
+    serializer = AppConfigSerializer(config)
+    return Response(serializer.data)
   
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):

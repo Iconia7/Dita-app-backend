@@ -5,7 +5,7 @@ from django.conf.urls.static import static # <--- MAKE SURE THIS IS IMPORTED
 from api import views
 from rest_framework.routers import DefaultRouter
 from api.views import (
-    UserViewSet, EventViewSet, PaymentViewSet, 
+    MyTokenObtainPairView, UserViewSet, EventViewSet, PaymentViewSet, 
     InitiatePaymentView, PayHeroCallbackView, 
     RegisterView, AnnouncementViewSet, ResourceViewSet
 )
@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/updates/latest/', views.check_update, name='check_update'),
     path('api/change-password/', views.change_password, name='change_password'),
     path('upload-timetable/', views.upload_timetable, name='upload_timetable'),
+    path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
 

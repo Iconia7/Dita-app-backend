@@ -19,15 +19,19 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 # Local Imports
 from .models import RSVP, AppUpdate, Exam, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    ExamSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    ExamSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 # ==========================================
 #  STANDARD VIEWSETS (CRUD)
 # ==========================================
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 class EmailThread(threading.Thread):
     def __init__(self, subject, message, from_email, recipient_list):

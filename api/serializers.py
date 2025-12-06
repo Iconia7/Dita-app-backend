@@ -1,5 +1,26 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        # Add custom data to the response
+        data['id'] = self.user.id
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['admission_number'] = self.user.admission_number
+        data['points'] = self.user.points
+        
+        # Add phone number if it exists (safe check)
+        data['phone_number'] = getattr(self.user, 'phone_number', '')
+
+        # Add avatar URL if it exists
+        if self.user.avatar:
+            data['avatar'] = self.user.avatar.url
+
+        return data
 
 class UserSerializer(serializers.ModelSerializer):
     # 1. Custom Calculated Fields

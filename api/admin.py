@@ -6,7 +6,7 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, AppUpdate, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, AppConfig, AppUpdate, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
 @admin.register(AppUpdate)
@@ -87,3 +87,15 @@ class ResourceAdmin(admin.ModelAdmin):
     list_display = ('title', 'resource_type', 'link')
     list_filter = ('resource_type',)
     search_fields = ('title', 'description')
+    
+@admin.register(AppConfig)
+class AppConfigAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'maintenance_mode', 'maintenance_title')
+    
+    # Optional: Prevent creating more than one row if one exists
+    def has_add_permission(self, request):
+        return not AppConfig.objects.exists()
+
+    # Optional: Prevent deleting the configuration
+    def has_delete_permission(self, request, obj=None):
+        return False    

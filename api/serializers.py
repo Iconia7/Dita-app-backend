@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
 
 class UserSerializer(serializers.ModelSerializer):
@@ -36,25 +35,6 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_paid_member(self, obj):
         # Runs the logic in models.py (checking the date)
         return obj.is_active_member
-    
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        # This calls the parent class to get the standard token
-        data = super().validate(attrs)
-
-        # Now we ADD our custom data to the response
-        data['id'] = self.user.id
-        data['username'] = self.user.username
-        data['email'] = self.user.email
-        data['admission_number'] = self.user.admission_number
-        data['points'] = self.user.points
-        data['phone_number'] = getattr(self.user, 'phone_number', '')
-        
-        # If you have a profile picture, you can add that too:
-        if self.user.avatar:
-            data['avatar'] = self.user.avatar.url
-
-        return data    
     
 class AppUpdateSerializer(serializers.ModelSerializer):
     class Meta:

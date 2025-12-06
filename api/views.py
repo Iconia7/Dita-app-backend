@@ -11,6 +11,7 @@ from django.db.models import Q  # <--- Add this at the top
 # DRF Imports
 from dita_backend.utils import process_exam_excel
 from rest_framework import viewsets, status, generics
+from rest_framework.decorators import authentication_classes
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -198,7 +199,8 @@ def check_update(request):
     return Response({}, status=404) 
 
 @api_view(['POST'])
-@permission_classes([AllowAny]) # <--- CHANGE THIS
+@permission_classes([AllowAny])
+@authentication_classes([])# <--- CHANGE THIS
 def change_password(request):
     # 1. Get the user from the Token, NOT the body
     user_id = request.data.get('user_id')
@@ -209,13 +211,16 @@ def change_password(request):
     if not user_id or not old_pass or not new_pass:
         return Response({'error': 'Missing fields'}, status=400)
 
-    user = get_object_or_404(User, id=user_id)
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
 
-    # 1. Verify Old Password (This is your security layer now)
+    # 2. Verify Old Password (Security Check)
     if not user.check_password(old_pass):
         return Response({'error': 'Wrong old password'}, status=400)
 
-    # 2. Set New Password
+    # 3. Set New Password
     user.set_password(new_pass)
     user.save()
 

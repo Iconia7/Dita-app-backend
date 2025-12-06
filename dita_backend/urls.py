@@ -18,6 +18,9 @@ router.register(r'announcements', AnnouncementViewSet)
 router.register(r'resources', ResourceViewSet)
 router.register(r'tasks', views.TaskViewSet, basename='task')
 router.register(r'exams', views.ExamViewSet)
+router.register(r'lost-found', views.LostItemViewSet)
+router.register(r'community-posts', views.CommunityPostViewSet)
+router.register(r'community-comments', views.CommunityCommentViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -34,6 +37,7 @@ urlpatterns = [
     path('upload-timetable/', views.upload_timetable, name='upload_timetable'),
     path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/status/', views.system_status, name='system-status'),
+    path('api/leaderboard/', views.get_leaderboard, name='leaderboard'),
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
 

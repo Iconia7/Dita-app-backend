@@ -18,9 +18,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, AppConfig, AppUpdate, Exam, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    AppConfigSerializer, ExamSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, LostItemSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -57,9 +57,35 @@ class EmailThread(threading.Thread):
             print(f"❌ Error sending email: {e}")
 
 # --- 2. Updated View ---
+
+@api_view(['GET'])
+@permission_classes([AllowAny]) # Allow everyone to see the leaderboard
+def get_leaderboard(request):
+    # Fetch top 20 students with > 0 points
+    top_students = User.objects.filter(points__gt=0).order_by('-points')[:20]
+    
+    # We build a custom list because we don't want to expose sensitive info like phone/email
+    data = []
+    for user in top_students:
+        avatar_url = user.avatar.url if user.avatar else None
+        # Ensure full URL for images if needed
+        if avatar_url and not avatar_url.startswith('http'):
+            avatar_url = request.build_absolute_uri(avatar_url)
+            
+        data.append({
+            'username': user.username,
+            'program': user.program,
+            'points': user.points,
+            'avatar': avatar_url
+        })
+        
+    return Response(data)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_password_reset(request):
+    
     email = request.data.get('email')
     if not email:
         return Response({'error': 'Email is required'}, status=400)
@@ -156,6 +182,48 @@ def upload_timetable(request):
         fs.delete(filename)
         
     return render(request, 'upload.html', context)
+
+class LostItemViewSet(viewsets.ModelViewSet):
+    # Show newest first, and put 'Unresolved' items at the top
+    queryset = LostItem.objects.all().order_by('is_resolved', '-created_at')
+    serializer_class = LostItemSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        # Auto-attach the logged-in user
+        serializer.save(user=self.request.user)
+        
+        
+class CommunityPostViewSet(viewsets.ModelViewSet):
+    queryset = CommunityPost.objects.all()
+    serializer_class = CommunityPostSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    # Action to Like a post
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        post.likes += 1
+        post.save()
+        return Response({'status': 'liked', 'likes': post.likes})
+
+class CommunityCommentViewSet(viewsets.ModelViewSet):
+    queryset = CommunityComment.objects.all()
+    serializer_class = CommunityCommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
+    # Filter comments by post ID
+    def get_queryset(self):
+        post_id = self.request.query_params.get('post_id')
+        if post_id:
+            return self.queryset.filter(post_id=post_id).order_by('created_at')
+        return self.queryset        
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

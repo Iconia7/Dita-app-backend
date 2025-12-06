@@ -6,9 +6,16 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, AppConfig, AppUpdate, Exam, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
+admin.site.register(CommunityPost)
+admin.site.register(CommunityComment)
+@admin.register(LostItem)
+class LostItemAdmin(admin.ModelAdmin):
+    list_display = ('category', 'item_name', 'location', 'is_resolved', 'created_at')
+    list_filter = ('category', 'is_resolved')
+    search_fields = ('item_name', 'description')
 @admin.register(AppUpdate)
 class AppUpdateAdmin(admin.ModelAdmin):
     list_display = ('version_name', 'version_code', 'is_mandatory', 'created_at')

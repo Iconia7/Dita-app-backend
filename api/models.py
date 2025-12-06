@@ -44,6 +44,62 @@ class User(AbstractUser):
         if self.membership_expiry and self.membership_expiry > timezone.now():
             return True
         return False
+    
+class CommunityPost(models.Model):
+    CATEGORY_CHOICES = [
+        ('ACADEMIC', 'Academic Help 📚'),
+        ('GENERAL', 'General Chat 📢'),
+        ('MARKET', 'Marketplace 💼'),
+        ('EVENTS', 'Events & Fun 🎉'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='GENERAL')
+    is_anonymous = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Simple like counter
+    likes = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at'] # Newest first
+
+    def __str__(self):
+        return f"{self.user.username}: {self.content[:30]}..."
+
+class CommunityComment(models.Model):
+    post = models.ForeignKey(CommunityPost, related_name='comments', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment by {self.user.username}"    
+    
+class LostItem(models.Model):
+    TYPE_CHOICES = [
+        ('LOST', 'Lost 🛑'),
+        ('FOUND', 'Found ✅'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    item_name = models.CharField(max_length=100)
+    description = models.TextField()
+    category = models.CharField(max_length=10, choices=TYPE_CHOICES, default='LOST')
+    location = models.CharField(max_length=100, help_text="Where was it lost/found?")
+    
+    # Image is critical here
+    image = models.ImageField(upload_to='lost_found/', null=True, blank=True)
+    
+    # Contact info (User can override their default phone)
+    contact_phone = models.CharField(max_length=15)
+    
+    is_resolved = models.BooleanField(default=False) # True when returned/found
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.category}: {self.item_name}"    
 
 class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.db.models import Q
-from .models import AppConfig, AppUpdate, Exam, Resource, Task, User, Event, Payment, Announcement
+from .models import AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Resource, Task, User, Event, Payment, Announcement
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -135,6 +135,53 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = '__all__'
+        
+class CommunityCommentSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommunityComment
+        fields = ['id', 'post', 'username', 'avatar', 'text', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.avatar.url)
+        return None
+
+class CommunityPostSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    comment_count = serializers.IntegerField(source='comments.count', read_only=True)
+
+    class Meta:
+        model = CommunityPost
+        fields = ['id', 'username', 'avatar', 'content', 'category', 'is_anonymous', 'created_at', 'likes', 'comment_count']
+        read_only_fields = ['user', 'created_at', 'likes']
+
+    def get_username(self, obj):
+        return "Anonymous Student" if obj.is_anonymous else obj.user.username
+
+    def get_avatar(self, obj):
+        if obj.is_anonymous:
+            return None # Frontend will show a incognito icon
+        if obj.user.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.avatar.url)
+        return None        
+        
+class LostItemSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    avatar = serializers.ImageField(source='user.avatar', read_only=True)
+
+    class Meta:
+        model = LostItem
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'is_resolved']        
 
 class AnnouncementSerializer(serializers.ModelSerializer):
     class Meta:

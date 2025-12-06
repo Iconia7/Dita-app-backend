@@ -19,14 +19,10 @@ def send_push_notification(sender, instance, created, **kwargs):
         # --- UPDATE START ---
         
         # Create a preview of the message (max 100 chars) for the notification tray
-        body_preview = (instance.message[:100] + '...') if len(instance.message) > 100 else instance.message
+        body_preview = (instance.message[:200] + '...') if len(instance.message) > 200 else instance.message
 
         # 2. Construct the Message
         message = messaging.MulticastMessage(
-            notification=messaging.Notification(
-                title=instance.title,      # <--- NOW USES ADMIN TITLE
-                body=body_preview,         # <--- NOW USES ADMIN MESSAGE BODY
-            ),
             data={
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "title": instance.title,         # Send full title in data

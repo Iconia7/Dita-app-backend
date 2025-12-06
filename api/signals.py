@@ -5,7 +5,8 @@ from .models import Announcement, User
 
 @receiver(post_save, sender=Announcement)
 def send_push_notification(sender, instance, created, **kwargs):
-    if created: # Only send for NEW announcements
+    # Only send for NEW announcements that are marked ACTIVE
+    if created and instance.is_active: 
         print(f"📢 New Announcement: {instance.title}. Preparing notification...")
 
         # 1. Get all tokens
@@ -15,19 +16,26 @@ def send_push_notification(sender, instance, created, **kwargs):
             print("⚠️ No devices registered for notifications.")
             return
 
+        # --- UPDATE START ---
+        
+        # Create a preview of the message (max 100 chars) for the notification tray
+        body_preview = (instance.message[:100] + '...') if len(instance.message) > 100 else instance.message
+
         # 2. Construct the Message
         message = messaging.MulticastMessage(
             notification=messaging.Notification(
-                title="DITA Announcement 📢",
-                body=instance.title, 
+                title=instance.title,      # <--- NOW USES ADMIN TITLE
+                body=body_preview,         # <--- NOW USES ADMIN MESSAGE BODY
             ),
             data={
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                "message_body": instance.message, 
+                "title": instance.title,         # Send full title in data
+                "message_body": instance.message, # Send FULL message in data (not truncated)
                 "type": "announcement"
             },
             tokens=tokens,
         )
+        # --- UPDATE END ---
 
         # 3. Send (Using the Modern Method)
         try:

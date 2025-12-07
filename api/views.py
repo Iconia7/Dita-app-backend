@@ -25,6 +25,7 @@ from .serializers import (
 )
 from .payhero_utils import initiate_payhero_push
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 # ==========================================
@@ -187,6 +188,7 @@ class LostItemViewSet(viewsets.ModelViewSet):
     # Show newest first, and put 'Unresolved' items at the top
     queryset = LostItem.objects.all().order_by('is_resolved', '-created_at')
     serializer_class = LostItemSerializer
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
@@ -197,6 +199,7 @@ class LostItemViewSet(viewsets.ModelViewSet):
 class CommunityPostViewSet(viewsets.ModelViewSet):
     queryset = CommunityPost.objects.all()
     serializer_class = CommunityPostSerializer
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
@@ -213,6 +216,7 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
 class CommunityCommentViewSet(viewsets.ModelViewSet):
     queryset = CommunityComment.objects.all()
     serializer_class = CommunityCommentSerializer
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
@@ -228,6 +232,8 @@ class CommunityCommentViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         queryset = User.objects.all()

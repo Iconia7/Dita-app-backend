@@ -207,9 +207,9 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     # Action to Like a post
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
-        post = self.get_object()
+        post = self.get_object() 
         user = request.user
         
         if post.liked_by.filter(id=user.id).exists():
@@ -230,7 +230,7 @@ class CommunityCommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
     
-    # Filter comments by post ID
+    # Filter comments by post ID 
     def get_queryset(self):
         post_id = self.request.query_params.get('post_id')
         if post_id:

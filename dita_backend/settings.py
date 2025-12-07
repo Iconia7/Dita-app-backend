@@ -179,17 +179,17 @@ CLOUDINARY_STORAGE = {
 
 # ✅ ADD THIS (New Django 5.0+ Format):
 STORAGES = {
-    # 1. Media Files (Uploads) -> Cloudinary
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
-    # 2. Static Files (CSS/JS) -> WhiteNoise
+    # TEMPORARY FIX: Use standard Django storage
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# TEMPORARY FIX:
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 

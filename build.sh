@@ -4,7 +4,7 @@ set -o errexit
 
 pip install -r requirements.txt
 
-python manage.py collectstatic --no-input
+python manage.py collectstatic --no-input --clear
 
 # --- ADD THIS LINE BELOW ---
 # This tries to create the user using the Env Vars you set in Step 1.

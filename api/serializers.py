@@ -139,12 +139,17 @@ class PaymentSerializer(serializers.ModelSerializer):
 class CommunityCommentSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     avatar = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityComment
-        fields = ['id', 'post', 'username', 'avatar', 'text', 'created_at']
+        fields = ['id', 'post', 'username', 'avatar', 'text', 'created_at', 'is_owner']
         read_only_fields = ['user', 'created_at']
-
+    
+    def get_is_owner(self, obj):
+        user = self.context['request'].user
+        return obj.user == user
+    
     def get_avatar(self, obj):
         if obj.user.avatar:
             request = self.context.get('request')
@@ -156,12 +161,25 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(source='comments.count', read_only=True)
+    likes = serializers.IntegerField(source='total_likes', read_only=True)
+    is_liked = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityPost
-        fields = ['id', 'username', 'avatar', 'content', 'category', 'is_anonymous', 'created_at', 'likes', 'comment_count']
+        fields = ['id', 'username', 'avatar', 'content', 'category', 'is_anonymous', 'created_at', 'likes', 'comment_count', 'is_liked', 'is_owner']
         read_only_fields = ['user', 'created_at', 'likes']
+    
+    def get_is_liked(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return obj.liked_by.filter(id=user.id).exists()
+        return False
 
+    def get_is_owner(self, obj):
+        user = self.context['request'].user
+        return obj.user == user
+    
     def get_username(self, obj):
         return "Anonymous Student" if obj.is_anonymous else obj.user.username
 

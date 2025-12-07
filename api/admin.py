@@ -9,8 +9,33 @@ from io import BytesIO
 from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
-admin.site.register(CommunityPost)
-admin.site.register(CommunityComment)
+@admin.register(CommunityPost)
+class CommunityPostAdmin(admin.ModelAdmin):
+    list_display = ('user', 'short_content', 'category', 'total_likes_display', 'created_at')
+    list_filter = ('category', 'created_at')
+    search_fields = ('content', 'user__username')
+    readonly_fields = ('total_likes_display',) # Prevent editing the count manually
+
+    # Helper to show truncated content
+    def short_content(self, obj):
+        return obj.content[:50] + "..." if len(obj.content) > 50 else obj.content
+    short_content.short_description = "Content"
+
+    # Helper to show the count from the ManyToMany relationship
+    def total_likes_display(self, obj):
+        return obj.total_likes
+    total_likes_display.short_description = "Likes"
+
+@admin.register(CommunityComment)
+class CommunityCommentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'post_preview', 'text_preview', 'created_at')
+    search_fields = ('text', 'user__username')
+
+    def post_preview(self, obj):
+        return str(obj.post)[:30] + "..."
+    
+    def text_preview(self, obj):
+        return obj.text[:50] + "..."
 @admin.register(LostItem)
 class LostItemAdmin(admin.ModelAdmin):
     list_display = ('category', 'item_name', 'location', 'is_resolved', 'created_at')

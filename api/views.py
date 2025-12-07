@@ -9,6 +9,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db.models import Q  # <--- Add this at the top
 
 # DRF Imports
+from api.permissions import IsOwnerOrReadOnly
 from dita_backend.utils import process_exam_excel
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import authentication_classes
@@ -200,7 +201,7 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
     queryset = CommunityPost.objects.all()
     serializer_class = CommunityPostSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -209,15 +210,22 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
         post = self.get_object()
-        post.likes += 1
-        post.save()
-        return Response({'status': 'liked', 'likes': post.likes})
+        user = request.user
+        
+        if post.liked_by.filter(id=user.id).exists():
+            post.liked_by.remove(user) # Unlike
+            liked = False
+        else:
+            post.liked_by.add(user) # Like
+            liked = True
+            
+        return Response({'status': 'toggled', 'likes': post.total_likes, 'is_liked': liked})
 
 class CommunityCommentViewSet(viewsets.ModelViewSet):
     queryset = CommunityComment.objects.all()
     serializer_class = CommunityCommentSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

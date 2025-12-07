@@ -60,7 +60,10 @@ class CommunityPost(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Simple like counter
-    likes = models.IntegerField(default=0)
+    liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_posts', blank=True)
+    @property
+    def total_likes(self):
+        return self.liked_by.count()
 
     class Meta:
         ordering = ['-created_at'] # Newest first

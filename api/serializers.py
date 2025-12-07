@@ -193,13 +193,20 @@ class CommunityPostSerializer(serializers.ModelSerializer):
         return None        
         
 class LostItemSerializer(serializers.ModelSerializer):
+    is_owner = serializers.SerializerMethodField()
     username = serializers.ReadOnlyField(source='user.username')
     avatar = serializers.ImageField(source='user.avatar', read_only=True)
 
     class Meta:
         model = LostItem
         fields = '__all__'
-        read_only_fields = ['user', 'created_at', 'is_resolved']        
+        read_only_fields = ['user', 'created_at', 'is_resolved']     
+        
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and request.user:
+            return obj.user == request.user
+        return False       
 
 class AnnouncementSerializer(serializers.ModelSerializer):
     class Meta:

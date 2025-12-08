@@ -37,6 +37,7 @@ urlpatterns = [
     path('upload-timetable/', views.upload_timetable, name='upload_timetable'),
     path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/status/', views.system_status, name='system-status'),
+    path('public/exams/', views.public_exam_search, name='public_exam_search'),
     path('api/leaderboard/', views.get_leaderboard, name='leaderboard'),
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),

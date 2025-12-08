@@ -237,6 +237,25 @@ class CommunityCommentViewSet(viewsets.ModelViewSet):
             return self.queryset.filter(post_id=post_id).order_by('created_at')
         return self.queryset        
 
+def public_exam_search(request):
+    exams = []
+    query = request.GET.get('codes', '')
+    
+    if query:
+        # Split by comma, strip spaces, uppercase
+        codes_list = [c.strip().upper() for c in query.split(',')]
+        
+        # Build query
+        db_query = Q()
+        for code in codes_list:
+            if code:
+                db_query |= Q(course_code__istartswith=code)
+        
+        if db_query:
+            exams = Exam.objects.filter(db_query).order_by('date')
+
+    return render(request, 'exam_search.html', {'exams': exams})
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

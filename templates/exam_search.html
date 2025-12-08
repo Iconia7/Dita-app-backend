@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DITA Exam Timetable</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root { 
-            --primary: #003366; 
-            --primary-dark: #001f3f;
-            --accent: #FFD700; 
-            --bg: #F0F4F8; 
+            /* Matches Flutter AppTheme.lightTheme */
+            --primary: #003366;       /* DITA Blue */
+            --primary-dark: #0F172A;  /* Midnight Navy */
+            --accent: #FFD700;        /* DITA Gold */
+            --bg: #F5F7FA;            /* App Background */
             --card-bg: #FFFFFF;
-            --text-main: #1E293B;
-            --text-sub: #64748B;
+            --text-main: #1E293B;     /* Slate 800 */
+            --text-sub: #64748B;      /* Slate 500 */
+            --danger: #EF4444;        /* Red for alerts */
         }
 
         body { 
@@ -28,232 +30,264 @@
             min-height: 100vh;
         }
 
-        /* HERO SECTION */
+        /* --- 1. HERO SECTION (Matches App Login Gradient) --- */
         .header { 
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); 
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); 
             color: white; 
-            padding: 60px 20px 80px; 
+            padding: 80px 20px 100px; /* Extra padding at bottom for overlap */
             text-align: center; 
             position: relative;
             border-bottom-left-radius: 40px;
             border-bottom-right-radius: 40px;
-            box-shadow: 0 10px 30px rgba(0,51,102,0.2);
+            box-shadow: 0 10px 40px rgba(0, 51, 102, 0.3);
+            overflow: hidden;
+        }
+
+        /* Decorative Circle Pattern (Like App Home) */
+        .header::after {
+            content: "";
+            position: absolute;
+            top: -50px; right: -50px;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
         }
         
-        .header h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: 1px; }
-        .header p { margin: 10px 0 0; opacity: 0.85; font-size: 16px; font-weight: 300; }
-        
-        /* Floating Logo Circle (Optional decoration) */
-        .logo-ring {
+        .logo-box {
             width: 80px; height: 80px;
-            background: rgba(255,255,255,0.1);
+            background: white;
             border-radius: 50%;
             margin: 0 auto 20px;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid rgba(255,255,255,0.2);
-            font-size: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            font-size: 40px;
         }
 
-        /* MAIN CONTAINER */
+        .header h1 { margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -1px; }
+        .header p { margin: 10px 0 0; opacity: 0.8; font-size: 16px; font-weight: 300; }
+        
+        /* --- 2. FLOATING SEARCH CARD --- */
         .container { 
-            max-width: 700px; 
-            margin: -60px auto 40px; 
+            max-width: 600px; 
+            margin: -70px auto 40px; /* Pulls it UP into the header */
             padding: 0 20px; 
             flex: 1;
+            position: relative;
+            z-index: 10;
         }
 
-        /* SEARCH BOX */
-        .search-box { 
+        .search-card { 
             background: var(--card-bg); 
             padding: 30px; 
             border-radius: 24px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.08); 
-            text-align: center; 
-            border: 1px solid rgba(0,0,0,0.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+            text-align: left;
         }
         
-        .search-box label { display: block; text-align: left; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--text-sub); }
+        .search-card label { 
+            display: block; 
+            margin-bottom: 12px; 
+            font-weight: 700; 
+            font-size: 14px; 
+            color: var(--primary); 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         
-        .input-group { position: relative; margin-bottom: 20px; }
-        
-        .search-box input { 
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-wrapper input { 
             width: 100%; 
             padding: 18px 20px; 
-            border: 2px solid #E2E8F0; 
+            padding-left: 50px; /* Space for icon */
+            border: 2px solid #F1F5F9; 
             border-radius: 16px; 
             font-size: 16px; 
             outline: none; 
-            transition: all 0.3s ease; 
             box-sizing: border-box;
             background: #F8FAFC;
+            color: var(--text-main);
             font-family: inherit;
+            font-weight: 600;
+            transition: 0.3s;
         }
         
-        .search-box input:focus { 
+        .input-icon {
+            position: absolute;
+            left: 18px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-sub);
+            font-size: 20px;
+        }
+
+        .input-wrapper input:focus { 
             border-color: var(--primary); 
             background: white; 
             box-shadow: 0 0 0 4px rgba(0, 51, 102, 0.1);
         }
         
-        .search-box button { 
-            background: var(--primary); 
-            color: white; 
+        /* Gold Button (Matches App FAB) */
+        .btn-search { 
+            background: var(--accent); 
+            color: var(--primary); 
             border: none; 
             padding: 18px; 
             font-size: 16px; 
-            font-weight: 600; 
+            font-weight: 800; 
             border-radius: 16px; 
             cursor: pointer; 
-            transition: 0.3s; 
             width: 100%; 
-            box-shadow: 0 10px 20px rgba(0, 51, 102, 0.2);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+            transition: 0.3s transform ease, 0.3s box-shadow ease;
+            text-transform: uppercase;
         }
         
-        .search-box button:hover { 
-            background: var(--primary-dark); 
-            transform: translateY(-2px); 
-            box-shadow: 0 15px 30px rgba(0, 51, 102, 0.3);
+        .btn-search:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 25px rgba(255, 215, 0, 0.4);
         }
 
-        /* RESULTS CARDS */
-        .results { margin-top: 30px; }
-        
+        /* --- 3. RESULTS LIST --- */
+        .results-area { margin-top: 40px; }
+        .results-header { font-size: 18px; font-weight: 700; margin-bottom: 15px; color: var(--text-main); }
+
         .exam-card { 
             background: var(--card-bg); 
-            border-radius: 20px; 
-            padding: 25px; 
-            margin-bottom: 18px; 
+            border-radius: 18px; 
+            padding: 20px; 
+            margin-bottom: 15px; 
             display: flex; 
-            justify-content: space-between; 
             align-items: center; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            border: 1px solid #F1F5F9;
-            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: 0.2s;
             position: relative;
             overflow: hidden;
         }
         
+        /* Gold Accent Line on left */
         .exam-card::before {
             content: "";
             position: absolute;
             left: 0; top: 0; bottom: 0;
-            width: 6px;
-            background: var(--accent);
+            width: 5px;
+            background: var(--primary);
         }
 
-        .exam-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.06);
-        }
+        .exam-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
 
-        .exam-info { flex: 1; padding-right: 20px; }
+        .exam-meta { flex: 1; padding-left: 15px; }
         
-        .exam-info h3 { 
-            margin: 0 0 8px; 
-            color: var(--primary); 
-            font-size: 20px; 
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .code-pill {
+            display: inline-block;
+            background: rgba(0, 51, 102, 0.1);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 8px;
         }
+
+        .exam-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; line-height: 1.3; }
         
-        .badge-venue { 
-            background: #E0F2FE; 
-            color: #0369A1; 
-            padding: 4px 10px; 
-            border-radius: 8px; 
-            font-size: 11px; 
-            font-weight: 700; 
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .venue-row { display: flex; align-items: center; color: var(--text-sub); font-size: 13px; font-weight: 500; }
+        .venue-icon { margin-right: 5px; color: var(--accent); }
 
-        .exam-info p { margin: 0; color: var(--text-sub); font-size: 14px; font-weight: 400; line-height: 1.5; }
-
-        .exam-date-box { 
+        /* Date Box (Right Side) */
+        .date-box { 
             text-align: center; 
-            background: #F8FAFC; 
-            padding: 12px 18px; 
-            border-radius: 14px; 
-            border: 1px solid #E2E8F0;
-            min-width: 80px;
+            background: #F1F5F9; 
+            padding: 10px 15px; 
+            border-radius: 12px; 
+            min-width: 70px;
         }
-        
-        .date-month { font-size: 12px; color: var(--text-sub); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
-        .date-day { font-size: 24px; color: var(--text-main); font-weight: 800; line-height: 1.1; margin: 4px 0; }
-        .date-time { font-size: 13px; color: var(--primary); font-weight: 600; background: rgba(0, 51, 102, 0.05); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px;}
+        .db-month { font-size: 11px; color: var(--text-sub); text-transform: uppercase; font-weight: 800; }
+        .db-day { font-size: 22px; color: var(--primary-dark); font-weight: 800; line-height: 1.1; }
+        .db-time { font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 4px; }
 
         /* EMPTY STATE */
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-sub); }
-        .empty-icon { font-size: 40px; margin-bottom: 15px; opacity: 0.3; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-sub); opacity: 0.8; }
+        .empty-icon { font-size: 48px; margin-bottom: 10px; display: block; filter: grayscale(1); }
 
         /* FOOTER */
-        .footer { text-align: center; padding: 30px; font-size: 13px; color: var(--text-sub); border-top: 1px solid #E2E8F0; background: white; margin-top: auto; }
-        .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
-        
+        .footer { 
+            text-align: center; padding: 40px 20px; 
+            font-size: 13px; color: var(--text-sub); 
+            background: white; border-top: 1px solid #F1F5F9; margin-top: auto; 
+        }
+        .footer a { color: var(--primary); text-decoration: none; font-weight: 700; }
+
         @media (max-width: 480px) {
-            .header { padding: 40px 20px 70px; }
-            .header h1 { font-size: 26px; }
-            .search-box { padding: 20px; }
-            .exam-card { flex-direction: column; align-items: flex-start; padding: 20px; }
-            .exam-date-box { width: 100%; margin-top: 15px; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; }
-            .date-day { margin: 0 10px; font-size: 18px; }
-            .exam-info h3 { font-size: 18px; flex-wrap: wrap;}
+            .header h1 { font-size: 28px; }
+            .search-card { padding: 25px 20px; }
+            .btn-search { padding: 16px; }
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo-ring">🎓</div>
+        <div class="logo-box">🎓</div>
         <h1>DITA EXAMS</h1>
-        <p>Official Timetable Checker</p>
+        <p>The Official Student Companion</p>
     </div>
 
     <div class="container">
-        <div class="search-box">
-            <label>Find Your Exams</label>
+        <div class="search-card">
+            <label>Find Your Schedule</label>
             <form method="GET">
-                <div class="input-group">
-                    <input type="text" name="codes" placeholder="e.g. ACS401, INS411, BIL112" value="{{ request.GET.codes|default:'' }}">
+                <div class="input-wrapper">
+                    <span class="input-icon">🔍</span>
+                    <input type="text" name="codes" placeholder="Enter Unit Codes (e.g. ACS401, INS411)" value="{{ request.GET.codes|default:'' }}" autofocus>
                 </div>
-                <button type="submit">Search Timetable</button>
+                <button type="submit" class="btn-search">Search Timetable</button>
             </form>
         </div>
 
-        <div class="results">
+        <div class="results-area">
             {% if exams %}
+                <div class="results-header">Your Exams ({{ exams|length }})</div>
                 {% for exam in exams %}
                 <div class="exam-card">
-                    <div class="exam-info">
-                        <h3>{{ exam.course_code }} <span class="badge-venue">📍 {{ exam.venue }}</span></h3>
-                        <p>{{ exam.title }}</p>
+                    <div class="exam-meta">
+                        <span class="code-pill">{{ exam.course_code }}</span>
+                        <h3 class="exam-title">{{ exam.title }}</h3>
+                        <div class="venue-row">
+                            <span class="venue-icon">📍</span> {{ exam.venue }}
+                        </div>
                     </div>
-                    <div class="exam-date-box">
-                        <div class="date-month">{{ exam.date|date:"M" }}</div>
-                        <div class="date-day">{{ exam.date|date:"d" }}</div>
-                        <div class="date-time">{{ exam.date|time:"H:i" }}</div>
+                    <div class="date-box">
+                        <div class="db-month">{{ exam.date|date:"M" }}</div>
+                        <div class="db-day">{{ exam.date|date:"d" }}</div>
+                        <div class="db-time">{{ exam.date|time:"H:i" }}</div>
                     </div>
                 </div>
                 {% endfor %}
+            
             {% elif request.GET.codes %}
                 <div class="empty-state">
-                    <div class="empty-icon">🔍</div>
-                    <p>No exams found matching these codes.</p>
-                    <small>Try checking the spelling or formatting (e.g. ACS401).</small>
+                    <span class="empty-icon">🤷‍♂️</span>
+                    <h3>No exams found</h3>
+                    <p>We couldn't find any matches for "<strong>{{ request.GET.codes }}</strong>".</p>
+                    <p><small>Check your spelling or try adding commas (e.g. ACS401, BIL112)</small></p>
                 </div>
+
             {% else %}
                 <div class="empty-state">
-                    <p>Enter your unit codes above to see your schedule.</p>
+                    <span class="empty-icon">📅</span>
+                    <p>Enter your unit codes above to see your customized exam timetable instantly.</p>
                 </div>
             {% endif %}
         </div>
     </div>
 
     <div class="footer">
-        <p>Powered by <strong>DITA App</strong></p>
-        <p>Android user? <a href="#">Download the App</a> for automatic reminders.</p>
+        <p>Powered by <strong>DITA App</strong> &bull; Daystar University</p>
+        <p>Get the full experience on Android. <a href="#">Download App</a></p>
     </div>
 
 </body>

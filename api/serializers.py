@@ -167,7 +167,8 @@ class CommunityPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CommunityPost
-        fields = ['id', 'username', 'avatar', 'content', 'category', 'is_anonymous', 'created_at', 'likes', 'comment_count', 'is_liked', 'is_owner']
+        # 🟢 NEW: Add 'image' to the fields list
+        fields = ['id', 'username', 'avatar', 'content', 'image', 'category', 'is_anonymous', 'created_at', 'likes', 'comment_count', 'is_liked', 'is_owner']
         read_only_fields = ['user', 'created_at', 'likes']
     
     def get_is_liked(self, obj):
@@ -185,12 +186,12 @@ class CommunityPostSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         if obj.is_anonymous:
-            return None # Frontend will show a incognito icon
+            return None 
         if obj.user.avatar:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.user.avatar.url)
-        return None        
+        return None       
         
 class LostItemSerializer(serializers.ModelSerializer):
     is_owner = serializers.SerializerMethodField()

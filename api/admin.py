@@ -11,17 +11,21 @@ from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost,
 admin.site.register(RSVP)
 @admin.register(CommunityPost)
 class CommunityPostAdmin(admin.ModelAdmin):
-    list_display = ('user', 'short_content', 'category', 'total_likes_display', 'created_at')
+    list_display = ('user', 'short_content', 'has_image', 'category', 'total_likes_display', 'created_at') # Added has_image
     list_filter = ('category', 'created_at')
     search_fields = ('content', 'user__username')
-    readonly_fields = ('total_likes_display',) # Prevent editing the count manually
+    readonly_fields = ('total_likes_display',) 
 
-    # Helper to show truncated content
     def short_content(self, obj):
         return obj.content[:50] + "..." if len(obj.content) > 50 else obj.content
     short_content.short_description = "Content"
 
-    # Helper to show the count from the ManyToMany relationship
+    # 🟢 Helper to show if image exists
+    def has_image(self, obj):
+        return bool(obj.image)
+    has_image.boolean = True
+    has_image.short_description = "Image?"
+
     def total_likes_display(self, obj):
         return obj.total_likes
     total_likes_display.short_description = "Likes"

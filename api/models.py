@@ -59,8 +59,12 @@ class CommunityPost(models.Model):
     is_anonymous = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    # 🟢 NEW: Add Image Field (Uploads to Cloudinary automatically via settings)
+    image = models.ImageField(upload_to='community_uploads/', null=True, blank=True)
+
     # Simple like counter
     liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_posts', blank=True)
+    
     @property
     def total_likes(self):
         return self.liked_by.count()

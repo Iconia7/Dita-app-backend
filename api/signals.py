@@ -17,9 +17,6 @@ def send_push_notification(sender, instance, created, **kwargs):
             return
 
         # --- UPDATE START ---
-        
-        # Create a preview of the message (max 100 chars) for the notification tray
-        body_preview = (instance.message[:200] + '...') if len(instance.message) > 200 else instance.message
 
         # 2. Construct the Message
         message = messaging.MulticastMessage(
@@ -30,6 +27,10 @@ def send_push_notification(sender, instance, created, **kwargs):
                 "type": "announcement"
             },
             tokens=tokens,
+            android=messaging.AndroidConfig(
+                priority='high', # Forces wake-up in background
+                ttl=0,           # 0 = Deliver immediately or drop (prevents stale alerts)
+            )
         )
         # --- UPDATE END ---
 

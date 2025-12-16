@@ -233,6 +233,7 @@ class Announcement(models.Model):
     message = models.TextField()
     date_posted = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    image = models.ImageField(upload_to='announcements/', blank=True, null=True)
 
     def __str__(self):
         return self.title  

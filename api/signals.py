@@ -8,6 +8,12 @@ def send_push_notification(sender, instance, created, **kwargs):
     # Only send for NEW announcements that are marked ACTIVE
     if created and instance.is_active: 
         print(f"📢 New Announcement: {instance.title}. Preparing notification...")
+        image_url = ""
+        if instance.image:
+            # ⚠️ CRITICAL: You must prepend your domain.
+            # 'instance.image.url' usually returns '/media/announcements/pic.jpg'
+            # Change 'https://your-domain.com' to your actual backend URL.
+            image_url = f"https://dita-app-backend.onrender.com{instance.image.url}"
 
         # 1. Get all tokens
         tokens = list(User.objects.exclude(fcm_token__isnull=True).exclude(fcm_token__exact='').values_list('fcm_token', flat=True))
@@ -24,7 +30,8 @@ def send_push_notification(sender, instance, created, **kwargs):
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "title": instance.title,         # Send full title in data
                 "message_body": instance.message, # Send FULL message in data (not truncated)
-                "type": "announcement"
+                "type": "announcement",
+                "image": image_url,
             },
             tokens=tokens,
             android=messaging.AndroidConfig(

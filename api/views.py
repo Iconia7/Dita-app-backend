@@ -19,9 +19,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, PasswordResetOTP, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, PasswordResetOTP, Promotion, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, LostItemSerializer, MyTokenObtainPairSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, LostItemSerializer, MyTokenObtainPairSerializer, PromotionSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -469,6 +469,12 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.filter(is_active=True).order_by('-date_posted')
     serializer_class = AnnouncementSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    
+class PromotionViewSet(viewsets.ReadOnlyModelViewSet):
+    # Only show active promos, newest first
+    queryset = Promotion.objects.filter(is_active=True).order_by('-created_at')
+    serializer_class = PromotionSerializer
+    permission_classes = [AllowAny]    
 
 
 class PaymentViewSet(viewsets.ModelViewSet):

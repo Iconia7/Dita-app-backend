@@ -21,6 +21,7 @@ router.register(r'exams', views.ExamViewSet)
 router.register(r'lost-found', views.LostItemViewSet)
 router.register(r'community-posts', views.CommunityPostViewSet)
 router.register(r'community-comments', views.CommunityCommentViewSet)
+router.register(r'promotions', views.PromotionViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

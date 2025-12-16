@@ -235,7 +235,18 @@ class Announcement(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.title    
+        return self.title  
+    
+class Promotion(models.Model):
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    image = models.ImageField(upload_to='promos/', null=True, blank=True)
+    action_text = models.CharField(max_length=20, default="CHECK IT OUT")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title      
     
 class AppConfig(models.Model):
     id = models.IntegerField(primary_key=True, default=1) # Forces only one row

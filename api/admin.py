@@ -6,7 +6,7 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Promotion, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
 
 admin.site.register(RSVP)
 @admin.register(CommunityPost)
@@ -116,7 +116,22 @@ class AnnouncementAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'date_posted')
     search_fields = ('title', 'message')
      
-
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'action_text', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'message')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'message', 'image', 'action_text')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'created_at')
+        }),
+    )
+    
 # 5. Resource Admin (NEW)
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):

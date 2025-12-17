@@ -10,10 +10,12 @@ def send_push_notification(sender, instance, created, **kwargs):
         print(f"📢 New Announcement: {instance.title}. Preparing notification...")
         image_url = ""
         if instance.image:
-            # ⚠️ CRITICAL: You must prepend your domain.
-            # 'instance.image.url' usually returns '/media/announcements/pic.jpg'
-            # Change 'https://your-domain.com' to your actual backend URL.
-            image_url = f"https://dita-app-backend.onrender.com{instance.image.url}"
+            # Check if it's already a full Cloudinary URL
+            if instance.image.url.startswith('http'):
+                image_url = instance.image.url
+            else:
+                # If it's a relative path (local storage), prepend domain
+                image_url = f"https://dita-app-backend.onrender.com{instance.image.url}"
 
         # 1. Get all tokens
         tokens = list(User.objects.exclude(fcm_token__isnull=True).exclude(fcm_token__exact='').values_list('fcm_token', flat=True))

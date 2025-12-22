@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/leaderboard/', views.get_leaderboard, name='leaderboard'),
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
+    path('api/auth/reset-password-phone/', views.reset_password_phone, name='reset-password-phone'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

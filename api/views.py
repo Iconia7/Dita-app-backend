@@ -121,6 +121,48 @@ def request_password_reset(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+def reset_password_phone(request):
+    """
+    Called by Flutter after Firebase successfully verifies the OTP.
+    """
+    phone = request.data.get('phone')
+    new_password = request.data.get('new_password')
+
+    if not phone or not new_password:
+        return Response({'error': 'Phone and new password are required'}, status=400)
+
+    # 1. Clean the phone input
+    phone = phone.replace(" ", "").replace("-", "")
+
+    # 2. Find the user (Handle +254 vs 07 formats)
+    user = None
+    
+    # Check 1: Exact Match (e.g. +254712345678)
+    # NOTE: Ensure your User model has 'phone_number'. If it is named 'phone', change below.
+    user = User.objects.filter(phone_number=phone).first()
+
+    if not user:
+        # Check 2: If input is +254, try Local format (07...)
+        if phone.startswith('+254'):
+            local_format = '0' + phone[4:] 
+            user = User.objects.filter(phone_number=local_format).first()
+        
+        # Check 3: If input is 07, try Intl format (+254...)
+        elif phone.startswith('0'):
+            intl_format = '+254' + phone[1:]
+            user = User.objects.filter(phone_number=intl_format).first()
+
+    if not user:
+        return Response({'error': 'User not found with this phone number.'}, status=404)
+
+    # 3. Set New Password
+    user.set_password(new_password)
+    user.save()
+
+    return Response({'message': 'Password reset successful successfully!'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def reset_password_with_otp(request):
     email = request.data.get('email')
     otp = request.data.get('otp')

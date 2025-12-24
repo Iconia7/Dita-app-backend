@@ -224,7 +224,7 @@ def request_sms_otp(request):
     PasswordResetOTP.objects.create(user=user, otp=otp)
 
     # Send SMS via TextBee
-    message = f"[DITA APP] Your One Time Password (OTP) is: {otp}. Valid for 10 minutes."
+    message = f"[DITA APP] Your One Time Password (OTP) is: {otp}. Valid for 5 minutes."
     sent = send_textbee_sms(clean_phone, message)
 
     if sent:
@@ -236,25 +236,19 @@ def request_sms_otp(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password_with_otp(request):
-    """
-    Now accepts 'identifier' (which can be email OR phone)
-    """
-    identifier = request.data.get('identifier') # Can be phone or email
+    identifier = request.data.get('identifier')
     otp = request.data.get('otp')
     new_password = request.data.get('new_password')
 
     if not all([identifier, otp, new_password]):
         return Response({'error': 'All fields are required'}, status=400)
 
-    # 1. Find User (Try Email first, then Phone)
+    # 1. Find User
     user = User.objects.filter(email=identifier).first()
-    
     if not user:
-        # Try Phone formatting
         clean_phone = identifier.strip()
         if clean_phone.startswith('0'):
             clean_phone = '+254' + clean_phone[1:]
-        
         user = User.objects.filter(phone_number=clean_phone).first()
         if not user: 
             user = User.objects.filter(phone_number=identifier).first()
@@ -262,11 +256,22 @@ def reset_password_with_otp(request):
     if not user:
         return Response({'error': 'User not found'}, status=404)
 
-    # 2. Verify OTP
+    # 2. Get the OTP Entry
     reset_entry = PasswordResetOTP.objects.filter(user=user, otp=otp).last()
 
-    if not reset_entry or not reset_entry.is_valid():
-        return Response({'error': 'Invalid or expired OTP'}, status=400)
+    if not reset_entry:
+        return Response({'error': 'Invalid OTP'}, status=400)
+
+    # ---------------------------------------------------------
+    # 👇 NEW LOGIC: Check if 10 minutes have passed
+    # ---------------------------------------------------------
+    expiry_time = reset_entry.created_at + timedelta(minutes=5)
+    
+    if timezone.now() > expiry_time:
+        # Delete expired OTP so they can't try it again
+        reset_entry.delete() 
+        return Response({'error': 'OTP has expired. Please request a new one.'}, status=400)
+    # ---------------------------------------------------------
 
     # 3. Reset Password
     user.set_password(new_password)

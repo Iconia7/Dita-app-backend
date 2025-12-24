@@ -43,6 +43,8 @@ urlpatterns = [
     path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
     path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
     path('api/auth/reset-password-phone/', views.reset_password_phone, name='reset-password-phone'),
+    path('request-sms-otp/', views.request_sms_otp, name='request-sms-otp'),
+    path('reset-password-with-otp/', views.reset_password_with_otp, name='reset-password-with-otp'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

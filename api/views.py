@@ -1,5 +1,6 @@
 from datetime import timedelta
 import random
+import requests
 import threading
 from django.core.mail import send_mail
 from django.conf import settings
@@ -161,34 +162,120 @@ def reset_password_phone(request):
 
     return Response({'message': 'Password reset successful successfully!'})
 
+# ==========================================
+#  TEXTBEE CONFIGURATION
+# ==========================================
+TEXTBEE_API_KEY = "YOUR_TEXTBEE_API_KEY_HERE"
+TEXTBEE_DEVICE_ID = "YOUR_DEVICE_ID_HERE"
+
+def send_textbee_sms(phone_number, message):
+    url = f"https://api.textbee.dev/api/v1/gateway/devices/{TEXTBEE_DEVICE_ID}/sendSMS"
+    payload = {
+        "recipients": [phone_number],
+        "message": message
+    }
+    headers = {"x-api-key": TEXTBEE_API_KEY}
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"TextBee Error: {e}")
+        return False
+
+# ==========================================
+#  UPDATED AUTH VIEWS
+# ==========================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_sms_otp(request):
+    """
+    1. Receive Phone.
+    2. Check User.
+    3. Generate OTP.
+    4. Send via TextBee.
+    """
+    phone = request.data.get('phone')
+    
+    if not phone:
+        return Response({'error': 'Phone number is required'}, status=400)
+
+    # Clean Phone (Convert 07xx to +254xx)
+    clean_phone = phone.strip()
+    if clean_phone.startswith('0'):
+        clean_phone = '+254' + clean_phone[1:]
+    
+    # Find User
+    user = User.objects.filter(phone_number=clean_phone).first() # Ensure your model field is 'phone_number'
+    
+    # Fallback checks if user stored number differently
+    if not user:
+         user = User.objects.filter(phone_number=phone).first()
+
+    if not user:
+        return Response({'error': 'User not found with this phone number.'}, status=404)
+
+    # Generate 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+
+    # Save OTP to DB (Reuse your existing PasswordResetOTP model)
+    PasswordResetOTP.objects.filter(user=user).delete()
+    PasswordResetOTP.objects.create(user=user, otp=otp)
+
+    # Send SMS via TextBee
+    message = f"[DITA APP] Your One Time Password (OTP) is: {otp}. Valid for 10 minutes."
+    sent = send_textbee_sms(clean_phone, message)
+
+    if sent:
+        return Response({'message': 'OTP sent successfully via SMS'})
+    else:
+        return Response({'error': 'Failed to send SMS. Check Gateway status.'}, status=500)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password_with_otp(request):
-    email = request.data.get('email')
+    """
+    Now accepts 'identifier' (which can be email OR phone)
+    """
+    identifier = request.data.get('identifier') # Can be phone or email
     otp = request.data.get('otp')
     new_password = request.data.get('new_password')
 
-    if not all([email, otp, new_password]):
+    if not all([identifier, otp, new_password]):
         return Response({'error': 'All fields are required'}, status=400)
 
-    try:
-        user = User.objects.get(email=email)
-        reset_entry = PasswordResetOTP.objects.filter(user=user, otp=otp).last()
+    # 1. Find User (Try Email first, then Phone)
+    user = User.objects.filter(email=identifier).first()
+    
+    if not user:
+        # Try Phone formatting
+        clean_phone = identifier.strip()
+        if clean_phone.startswith('0'):
+            clean_phone = '+254' + clean_phone[1:]
+        
+        user = User.objects.filter(phone_number=clean_phone).first()
+        if not user: 
+            user = User.objects.filter(phone_number=identifier).first()
 
-        if not reset_entry or not reset_entry.is_valid():
-            return Response({'error': 'Invalid or expired OTP'}, status=400)
+    if not user:
+        return Response({'error': 'User not found'}, status=404)
 
-        # Reset Password
-        user.set_password(new_password)
-        user.save()
+    # 2. Verify OTP
+    reset_entry = PasswordResetOTP.objects.filter(user=user, otp=otp).last()
 
-        # Cleanup
-        reset_entry.delete()
+    if not reset_entry or not reset_entry.is_valid():
+        return Response({'error': 'Invalid or expired OTP'}, status=400)
 
-        return Response({'message': 'Password reset successful!'})
+    # 3. Reset Password
+    user.set_password(new_password)
+    user.save()
 
-    except User.DoesNotExist:
-        return Response({'error': 'Invalid request'}, status=400)
+    # Cleanup
+    reset_entry.delete()
+
+    return Response({'message': 'Password reset successful!'})
 
 def upload_timetable(request):
     context = {}

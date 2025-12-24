@@ -165,8 +165,8 @@ def reset_password_phone(request):
 # ==========================================
 #  TEXTBEE CONFIGURATION
 # ==========================================
-TEXTBEE_API_KEY = "YOUR_TEXTBEE_API_KEY_HERE"
-TEXTBEE_DEVICE_ID = "YOUR_DEVICE_ID_HERE"
+TEXTBEE_API_KEY = "1dcae381-e559-4d67-9ebb-56c45eb23c61"
+TEXTBEE_DEVICE_ID = "694bc64beaf21e40b5f51510"
 
 def send_textbee_sms(phone_number, message):
     url = f"https://api.textbee.dev/api/v1/gateway/devices/{TEXTBEE_DEVICE_ID}/sendSMS"

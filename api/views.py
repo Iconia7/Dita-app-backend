@@ -178,7 +178,7 @@ def send_textbee_sms(phone_number, message):
     
     try:
         response = requests.post(url, json=payload, headers=headers)
-        return response.status_code == 200
+        return 200 <= response.status_code < 300
     except Exception as e:
         print(f"TextBee Error: {e}")
         return False

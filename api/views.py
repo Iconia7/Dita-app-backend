@@ -1,33 +1,64 @@
+import os
 from datetime import timedelta
-import random
-import requests
-import threading
+
+# --- 1. NEW IMPORTS FOR SECURITY ---
+import firebase_admin
+from firebase_admin import auth, credentials
+
 from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.core.files.storage import FileSystemStorage
-from django.db.models import Q  # <--- Add this at the top
+from django.db.models import Q 
 
 # DRF Imports
 from api.permissions import IsOwnerOrReadOnly
 from dita_backend.utils import process_exam_excel
 from rest_framework import viewsets, status, generics
-from rest_framework.decorators import authentication_classes
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, PasswordResetOTP, Promotion, Task, User, Event, Payment, Resource, Announcement
+from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, Promotion, Task, User, Event, Payment, Resource, Announcement
 from .serializers import (
-    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, LostItemSerializer, MyTokenObtainPairSerializer, PromotionSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
+    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, MyTokenObtainPairSerializer, PromotionSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
     RegisterSerializer, ResourceSerializer, AnnouncementSerializer
 )
 from .payhero_utils import initiate_payhero_push
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+
+# ==========================================
+# 🔥 FIREBASE INITIALIZATION
+# ==========================================
+try:
+    if not firebase_admin._apps:
+        # 1. Determine the path based on Environment (Render vs Local)
+        if os.environ.get('RENDER'):
+            # Render stores Secret Files in /etc/secrets/
+            cred_path = '/etc/secrets/serviceAccountKey.json'
+        else:
+            # Local development path (Check inside dita_backend folder first)
+            cred_path = os.path.join(settings.BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
+            
+            # Fallback: Check root folder if not found in subfolder
+            if not os.path.exists(cred_path):
+                 cred_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')
+
+        # 2. Initialize the App
+        if os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+            print(f"✅ Firebase Admin SDK Initialized from: {cred_path}")
+        else:
+            print(f"⚠️ WARNING: Service Account Key not found at: {cred_path}")
+            print("   Secure Phone Login will fail until the file is added.")
+
+except Exception as e:
+    print(f"❌ Firebase Init Error: {e}")               
 
 
 # ==========================================
@@ -37,41 +68,15 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
-class EmailThread(threading.Thread):
-    def __init__(self, subject, message, from_email, recipient_list):
-        self.subject = subject
-        self.message = message
-        self.from_email = from_email
-        self.recipient_list = recipient_list
-        threading.Thread.__init__(self)
-
-    def run(self):
-        try:
-            print("⏳ Attempting to send email in background...")
-            send_mail(
-                self.subject,
-                self.message,
-                self.from_email,
-                self.recipient_list,
-                fail_silently=False,
-            )
-            print("✅ Email sent successfully!")
-        except Exception as e:
-            print(f"❌ Error sending email: {e}")
-
-# --- 2. Updated View ---
+# --- Updated View ---
 
 @api_view(['GET'])
-@permission_classes([AllowAny]) # Allow everyone to see the leaderboard
+@permission_classes([AllowAny]) 
 def get_leaderboard(request):
-    # Fetch top 20 students with > 0 points
     top_students = User.objects.filter(points__gt=0).order_by('-points')[:20]
-    
-    # We build a custom list because we don't want to expose sensitive info like phone/email
     data = []
     for user in top_students:
         avatar_url = user.avatar.url if user.avatar else None
-        # Ensure full URL for images if needed
         if avatar_url and not avatar_url.startswith('http'):
             avatar_url = request.build_absolute_uri(avatar_url)
             
@@ -84,203 +89,59 @@ def get_leaderboard(request):
         
     return Response(data)
 
-
+# ==========================================
+# 🔒 SECURE PHONE RESET (ENFORCED)
+# ==========================================
 @api_view(['POST'])
-@permission_classes([AllowAny])
-def request_password_reset(request):
-    
-    email = request.data.get('email')
-    if not email:
-        return Response({'error': 'Email is required'}, status=400)
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        # Pretend it worked for security
-        return Response({'error': 'Email not found. Please register first.'}, status=404)
-
-    # Generate 6-digit OTP
-    otp = str(random.randint(100000, 999999))
-
-    # Save OTP
-    PasswordResetOTP.objects.filter(user=user).delete()
-    PasswordResetOTP.objects.create(user=user, otp=otp)
-
-    # --- 3. Send Email in Background (Non-Blocking) ---
-    subject = 'DITA App Password Reset'
-    message = f'Your verification code is: {otp}. It expires in 10 minutes.'
-    
-    EmailThread(
-        subject, 
-        message, 
-        settings.DEFAULT_FROM_EMAIL, 
-        [email]
-    ).start()
-
-    # Return success immediately without waiting for Gmail
-    return Response({'message': 'OTP sent successfully'})
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([AllowAny]) # Keeps endpoint open, but we check token inside
 def reset_password_phone(request):
     """
     Called by Flutter after Firebase successfully verifies the OTP.
+    SECURED: Verifies the Firebase ID Token.
     """
-    phone = request.data.get('phone')
     new_password = request.data.get('new_password')
-
-    if not phone or not new_password:
-        return Response({'error': 'Phone and new password are required'}, status=400)
-
-    # 1. Clean the phone input
-    phone = phone.replace(" ", "").replace("-", "")
-
-    # 2. Find the user (Handle +254 vs 07 formats)
-    user = None
     
-    # Check 1: Exact Match (e.g. +254712345678)
-    # NOTE: Ensure your User model has 'phone_number'. If it is named 'phone', change below.
-    user = User.objects.filter(phone_number=phone).first()
+    # 1. GET TOKEN FROM HEADER
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith("Bearer "):
+        # ⚠️ If you haven't set up Firebase on backend yet, you can comment this block out temporarily
+        return Response({'error': 'Missing or Invalid Firebase Token'}, status=401)
 
-    if not user:
-        # Check 2: If input is +254, try Local format (07...)
-        if phone.startswith('+254'):
-            local_format = '0' + phone[4:] 
-            user = User.objects.filter(phone_number=local_format).first()
-        
-        # Check 3: If input is 07, try Intl format (+254...)
-        elif phone.startswith('0'):
-            intl_format = '+254' + phone[1:]
-            user = User.objects.filter(phone_number=intl_format).first()
+    id_token = auth_header.split(" ")[1]
+    verified_phone = None
 
-    if not user:
-        return Response({'error': 'User not found with this phone number.'}, status=404)
-
-    # 3. Set New Password
-    user.set_password(new_password)
-    user.save()
-
-    return Response({'message': 'Password reset successful successfully!'})
-
-# ==========================================
-#  TEXTBEE CONFIGURATION
-# ==========================================
-TEXTBEE_API_KEY = "1dcae381-e559-4d67-9ebb-56c45eb23c61"
-TEXTBEE_DEVICE_ID = "694bc64beaf21e40b5f51510"
-
-def send_textbee_sms(phone_number, message):
-    url = f"https://api.textbee.dev/api/v1/gateway/devices/{TEXTBEE_DEVICE_ID}/sendSMS"
-    payload = {
-        "recipients": [phone_number],
-        "message": message
-    }
-    headers = {"x-api-key": TEXTBEE_API_KEY}
-    
+    # 2. VERIFY TOKEN WITH GOOGLE
     try:
-        response = requests.post(url, json=payload, headers=headers)
-        return 200 <= response.status_code < 300
+        decoded_token = auth.verify_id_token(id_token)
+        verified_phone = decoded_token.get('phone_number') # e.g., +2547...
     except Exception as e:
-        print(f"TextBee Error: {e}")
-        return False
+        print(f"Token Verification Failed: {e}")
+        return Response({'error': 'Invalid or Expired Security Token'}, status=401)
 
-# ==========================================
-#  UPDATED AUTH VIEWS
-# ==========================================
+    if not verified_phone:
+        return Response({'error': 'Could not identify phone number from token'}, status=400)
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def request_sms_otp(request):
-    """
-    1. Receive Phone.
-    2. Check User.
-    3. Generate OTP.
-    4. Send via TextBee.
-    """
-    phone = request.data.get('phone')
-    
-    if not phone:
-        return Response({'error': 'Phone number is required'}, status=400)
-
-    # Clean Phone (Convert 07xx to +254xx)
-    clean_phone = phone.strip()
-    if clean_phone.startswith('0'):
-        clean_phone = '+254' + clean_phone[1:]
-    
-    # Find User
-    user = User.objects.filter(phone_number=clean_phone).first() # Ensure your model field is 'phone_number'
-    
-    # Fallback checks if user stored number differently
-    if not user:
-         user = User.objects.filter(phone_number=phone).first()
+    # 3. CLEAN UP PHONE (Handle formatting differences)
+    # Firebase sends +2547..., Database might have 07...
+    user = User.objects.filter(phone_number=verified_phone).first()
 
     if not user:
-        return Response({'error': 'User not found with this phone number.'}, status=404)
-
-    # Generate 6-digit OTP
-    otp = str(random.randint(100000, 999999))
-
-    # Save OTP to DB (Reuse your existing PasswordResetOTP model)
-    PasswordResetOTP.objects.filter(user=user).delete()
-    PasswordResetOTP.objects.create(user=user, otp=otp)
-
-    # Send SMS via TextBee
-    message = f"[DITA APP] Your One Time Password (OTP) is: {otp}. Valid for 5 minutes."
-    sent = send_textbee_sms(clean_phone, message)
-
-    if sent:
-        return Response({'message': 'OTP sent successfully via SMS'})
-    else:
-        return Response({'error': 'Failed to send SMS. Check Gateway status.'}, status=500)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def reset_password_with_otp(request):
-    identifier = request.data.get('identifier')
-    otp = request.data.get('otp')
-    new_password = request.data.get('new_password')
-
-    if not all([identifier, otp, new_password]):
-        return Response({'error': 'All fields are required'}, status=400)
-
-    # 1. Find User
-    user = User.objects.filter(email=identifier).first()
-    if not user:
-        clean_phone = identifier.strip()
-        if clean_phone.startswith('0'):
-            clean_phone = '+254' + clean_phone[1:]
-        user = User.objects.filter(phone_number=clean_phone).first()
-        if not user: 
-            user = User.objects.filter(phone_number=identifier).first()
+        # Try local format (07...)
+        if verified_phone.startswith('+254'):
+            local_format = '0' + verified_phone[4:]
+            user = User.objects.filter(phone_number=local_format).first()
 
     if not user:
-        return Response({'error': 'User not found'}, status=404)
+        return Response({'error': f'No student found with number {verified_phone}'}, status=404)
 
-    # 2. Get the OTP Entry
-    reset_entry = PasswordResetOTP.objects.filter(user=user, otp=otp).last()
+    if not new_password:
+        return Response({'error': 'New password is required'}, status=400)
 
-    if not reset_entry:
-        return Response({'error': 'Invalid OTP'}, status=400)
-
-    # ---------------------------------------------------------
-    # 👇 NEW LOGIC: Check if 10 minutes have passed
-    # ---------------------------------------------------------
-    expiry_time = reset_entry.created_at + timedelta(minutes=5)
-    
-    if timezone.now() > expiry_time:
-        # Delete expired OTP so they can't try it again
-        reset_entry.delete() 
-        return Response({'error': 'OTP has expired. Please request a new one.'}, status=400)
-    # ---------------------------------------------------------
-
-    # 3. Reset Password
+    # 4. RESET
     user.set_password(new_password)
     user.save()
 
-    # Cleanup
-    reset_entry.delete()
-
-    return Response({'message': 'Password reset successful!'})
+    return Response({'message': 'Password reset successfully!'})
 
 def upload_timetable(request):
     context = {}
@@ -291,18 +152,14 @@ def upload_timetable(request):
         file_path = fs.path(filename)
         
         try:
-            # 1. Process Excel
             exams_data = process_exam_excel(file_path)
-            
-            # 2. DELETE OLD DATA (Safe way to update timetable)
             Exam.objects.all().delete()
             
-            # 3. Insert New Data
             exam_objects = [
                 Exam(
                     course_code=item['course_code'],
                     title=item['title'],
-                    date=item['date'],          # datetime object
+                    date=item['date'], 
                     end_time=item['end_time'],
                     venue=item['venue'],
                     duration_hours=item['duration_hours']
@@ -318,17 +175,6 @@ def upload_timetable(request):
         fs.delete(filename)
         
     return render(request, 'upload.html', context)
-
-class LostItemViewSet(viewsets.ModelViewSet):
-    # Show newest first, and put 'Unresolved' items at the top
-    queryset = LostItem.objects.all().order_by('is_resolved', '-created_at')
-    serializer_class = LostItemSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def perform_create(self, serializer):
-        # Auto-attach the logged-in user
-        serializer.save(user=self.request.user)
         
         
 class CommunityPostViewSet(viewsets.ModelViewSet):
@@ -340,17 +186,16 @@ class CommunityPostViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    # Action to Like a post
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         post = self.get_object() 
         user = request.user
         
         if post.liked_by.filter(id=user.id).exists():
-            post.liked_by.remove(user) # Unlike
+            post.liked_by.remove(user)
             liked = False
         else:
-            post.liked_by.add(user) # Like
+            post.liked_by.add(user)
             liked = True
             
         return Response({'status': 'toggled', 'likes': post.total_likes, 'is_liked': liked})
@@ -364,7 +209,6 @@ class CommunityCommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
     
-    # Filter comments by post ID 
     def get_queryset(self):
         post_id = self.request.query_params.get('post_id')
         if post_id:
@@ -376,10 +220,7 @@ def public_exam_search(request):
     query = request.GET.get('codes', '')
     
     if query:
-        # Split by comma, strip spaces, uppercase
         codes_list = [c.strip().upper() for c in query.split(',')]
-        
-        # Build query
         db_query = Q()
         for code in codes_list:
             if code:
@@ -398,17 +239,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = User.objects.all()
-        
-        # Get the input from the app (it might be a username OR an admission number)
         search_term = self.request.query_params.get('username')
-        
         if search_term is not None:
-            # Filter: matches Username OR matches Admission Number (Case Insensitive)
             queryset = queryset.filter(
                 Q(username__iexact=search_term) | 
                 Q(admission_number__iexact=search_term)
             )
-            
         return queryset
     
 @api_view(['GET'])
@@ -416,10 +252,7 @@ class UserViewSet(viewsets.ModelViewSet):
 def check_update(request):
     latest_update = AppUpdate.objects.first()
     if latest_update:
-        # 1. Get the relative URL (e.g., /media/updates/v1.apk)
         relative_url = latest_update.apk_file.url
-
-        # 2. Convert it to a full absolute URL if it isn't one already
         if not relative_url.startswith('http'):
             download_url = request.build_absolute_uri(relative_url)
         else:
@@ -427,35 +260,30 @@ def check_update(request):
 
         return Response({
             'version_code': latest_update.version_code,
-            'download_url': download_url,  # <--- Send the Full URL
+            'download_url': download_url, 
             'release_notes': latest_update.release_notes,
             'is_mandatory': latest_update.is_mandatory
         })
     return Response({}, status=404) 
 
+# ==========================================
+# 🔒 SECURE CHANGE PASSWORD (ENFORCED)
+# ==========================================
 @api_view(['POST'])
-@permission_classes([AllowAny])
-@authentication_classes([])# <--- CHANGE THIS
+@permission_classes([IsAuthenticated])   # <--- 1. Enforce Login
 def change_password(request):
-    # 1. Get the user from the Token, NOT the body
-    user_id = request.data.get('user_id')
+    # 2. Use request.user (User identified by JWT)
+    user = request.user 
     
     old_pass = request.data.get('old_password')
     new_pass = request.data.get('new_password')
 
-    if not user_id or not old_pass or not new_pass:
+    if not old_pass or not new_pass:
         return Response({'error': 'Missing fields'}, status=400)
 
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=404)
-
-    # 2. Verify Old Password (Security Check)
     if not user.check_password(old_pass):
         return Response({'error': 'Wrong old password'}, status=400)
 
-    # 3. Set New Password
     user.set_password(new_pass)
     user.save()
 
@@ -464,34 +292,25 @@ def change_password(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def system_status(request):
-    # Get the config object (or create default if it doesn't exist)
     config, created = AppConfig.objects.get_or_create(id=1)
     serializer = AppConfigSerializer(config)
     return Response(serializer.data)
   
-
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        # If no params, return all (or none, depending on your preference)
-        # Your previous code returned none if no params, which is good for performance
         codes_param = self.request.query_params.get('codes')
         
         if codes_param:
-            # 1. Clean the inputs (e.g., "ACS 401" -> "ACS401")
             codes_list = [c.strip().upper().replace(" ", "") for c in codes_param.split(',')]
-            
-            # 2. Build the "Smart" Query
             query = Q()
             for code in codes_list:
                 if code: 
-                    # Matches "ACS401", "ACS401A", "ACS401T"
                     query |= Q(course_code__istartswith=code)
             
-            # Order by date so the app shows them chronologically
             return Exam.objects.filter(query).order_by('date')
             
         return Exam.objects.none()
@@ -501,37 +320,24 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny] 
 
     def get_queryset(self):
-        # FIX 2: Filter based on the 'user_id' query param sent from Flutter
-        # (e.g., /api/tasks/?user_id=6)
         user_id = self.request.query_params.get('user_id')
-        
         if user_id:
             return Task.objects.filter(user_id=user_id).order_by('due_date')
-        
-        # If no ID provided, return nothing (security)
         return Task.objects.none()
 
     def perform_create(self, serializer):
-        # FIX 3: Manually attach the user based on the ID sent in the body
         user_id = self.request.data.get('user_id')
         user = get_object_or_404(User, id=user_id)
         serializer.save(user=user)  
-
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('date')
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    # --- Custom Actions inside ViewSet ---
-
     @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def check_in(self, request, pk=None):
-        """
-        QR Code Scan Endpoint: /api/events/{id}/check_in/
-        """
         event = self.get_object()
-        
         user_id = request.data.get('user_id')
         if not user_id:
             return Response({'error': 'User ID required'}, status=400)
@@ -541,14 +347,10 @@ class EventViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
 
-        # Check if already scanned
         if event.checked_in_users.filter(id=user.id).exists():
             return Response({'message': 'Already checked in!'}, status=400)
         
-        # Record attendance
         event.checked_in_users.add(user)
-        
-        # Award Points
         user.points += 20
         user.save()
 
@@ -559,20 +361,14 @@ class EventViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def rsvp(self, request, pk=None):
-        """
-        RSVP Toggle Endpoint: /api/events/{id}/rsvp/
-        """
         event = self.get_object()
         user_id = request.data.get('user_id')
         
         try:
             user = User.objects.get(id=user_id)
-            
-            # Toggle RSVP (If exists delete, if not create)
             rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
             
             if not created:
-                # If it existed, delete it (Cancel RSVP)
                 rsvp.delete()
                 return Response({"status": "un-rsvped", "message": "RSVP cancelled"})
                 
@@ -580,24 +376,17 @@ class EventViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response({"error": str(e)}, status=400)
-    def get_queryset(self):
-        # 1. Check for filter
-        attended_by = self.request.query_params.get('attended_by')
-        
-        if attended_by:
-            # HISTORY MODE: Filter by user, show NEWEST first (Descending)
-            return Event.objects.filter(checked_in_users__id=attended_by).order_by('-date')
-        
-        # UPCOMING MODE: Show ALL, show SOONEST first (Ascending)
-        # You might also want to hide past events: .filter(date__gte=timezone.now())
-        return Event.objects.all().order_by('date')    
 
+    def get_queryset(self):
+        attended_by = self.request.query_params.get('attended_by')
+        if attended_by:
+            return Event.objects.filter(checked_in_users__id=attended_by).order_by('-date')
+        return Event.objects.all().order_by('date')    
 
 class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.all()
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.filter(is_active=True).order_by('-date_posted')
@@ -605,11 +394,9 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     
 class PromotionViewSet(viewsets.ReadOnlyModelViewSet):
-    # Only show active promos, newest first
     queryset = Promotion.objects.filter(is_active=True).order_by('-created_at')
     serializer_class = PromotionSerializer
     permission_classes = [AllowAny]    
-
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
@@ -688,7 +475,6 @@ class PayHeroCallbackView(APIView):
 
             student = payment.student
             
-            # SEMESTER LOGIC (120 Days)
             now = timezone.now()
             semester_length = timedelta(days=120)
 

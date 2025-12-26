@@ -28,7 +28,10 @@ SECRET_KEY = 'django-insecure-3gkyvhz&#f%-8*8n!o2#ur3s2gv(h4#@tai-wsywj__=nxr^hq
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # TODO: Set this to False when deploying to production for real
-DEBUG = True
+if os.environ.get('RENDER'):
+    DEBUG = False
+else:
+    DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -144,7 +147,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Nairobi'
 
 USE_I18N = True
 
@@ -204,12 +207,3 @@ if os.environ.get('RENDER'):
 else:
     # Local development path
     GOOGLE_CREDENTIALS_PATH = os.path.join(BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
-
-# EMAIL CONFIGURATION
-EMAIL_BACKEND = 'anymail.backends.mailjet.EmailBackend'
-ANYMAIL = {
-    "MAILJET_API_KEY": "c4952722b77c1bc3499b70a351171dd8",
-    "MAILJET_SECRET_KEY": "1a689046ad40425f30865f7005cb90a3",
-} 
-DEFAULT_FROM_EMAIL = "mwanginewton239@gmail.com"    
-SERVER_EMAIL = "mwanginewton239@gmail.com"

@@ -18,7 +18,6 @@ router.register(r'announcements', AnnouncementViewSet)
 router.register(r'resources', ResourceViewSet)
 router.register(r'tasks', views.TaskViewSet, basename='task')
 router.register(r'exams', views.ExamViewSet)
-router.register(r'lost-found', views.LostItemViewSet)
 router.register(r'community-posts', views.CommunityPostViewSet)
 router.register(r'community-comments', views.CommunityCommentViewSet)
 router.register(r'promotions', views.PromotionViewSet)
@@ -40,11 +39,7 @@ urlpatterns = [
     path('api/status/', views.system_status, name='system-status'),
     path('public/exams/', views.public_exam_search, name='public_exam_search'),
     path('api/leaderboard/', views.get_leaderboard, name='leaderboard'),
-    path('api/auth/request-reset/', views.request_password_reset, name='request-reset'),
-    path('api/auth/confirm-reset/', views.reset_password_with_otp, name='confirm-reset'),
     path('api/auth/reset-password-phone/', views.reset_password_phone, name='reset-password-phone'),
-    path('api/request-sms-otp/', views.request_sms_otp, name='request-sms-otp'),
-    path('api/reset-password-with-otp/', views.reset_password_with_otp, name='reset-password-with-otp'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

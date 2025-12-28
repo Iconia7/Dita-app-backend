@@ -5,7 +5,6 @@ from datetime import timedelta
 import firebase_admin
 from firebase_admin import auth, credentials
 
-from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -17,7 +16,7 @@ from api.permissions import IsOwnerOrReadOnly
 from dita_backend.utils import process_exam_excel
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
@@ -94,6 +93,7 @@ def get_leaderboard(request):
 # ==========================================
 @api_view(['POST'])
 @permission_classes([AllowAny]) # Keeps endpoint open, but we check token inside
+@authentication_classes([])
 def reset_password_phone(request):
     """
     Called by Flutter after Firebase successfully verifies the OTP.

@@ -118,14 +118,14 @@ class AnnouncementAdmin(admin.ModelAdmin):
      
 @admin.register(Promotion)
 class PromotionAdmin(admin.ModelAdmin):
-    list_display = ('title', 'action_text', 'is_active', 'created_at')
+    list_display = ('title', 'action_text', 'link', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
-    search_fields = ('title', 'message')
+    search_fields = ('title', 'message', 'link')
     readonly_fields = ('created_at',)
     
     fieldsets = (
         (None, {
-            'fields': ('title', 'message', 'image', 'action_text')
+            'fields': ('title', 'message', 'image', 'link', 'action_text')
         }),
         ('Status', {
             'fields': ('is_active', 'created_at')

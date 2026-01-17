@@ -18,8 +18,9 @@ def initiate_payhero_push(phone_number, amount, external_reference):
     channel_id = os.getenv('CHANNEL_ID')
     
     # Callback URL construction
-    base_url = os.getenv('BACKEND_URL', 'https://dita-app-backend.onrender.com') 
-    callback_url = f"{base_url}/api/mpesa/callback/"
+    base_url = os.getenv('BACKEND_URL', 'https://api.dita.co.ke') 
+    my_secret = os.getenv('PAYHERO_CALLBACK_SECRET') # e.g., "super_long_random_string_123"
+    callback_url = f"{base_url}/api/mpesa/callback/?token={my_secret}"
 
     headers = {
         "Authorization": auth_header,  

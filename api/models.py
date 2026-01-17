@@ -243,6 +243,12 @@ class Promotion(models.Model):
     message = models.TextField()
     image = models.ImageField(upload_to='promos/', null=True, blank=True)
     action_text = models.CharField(max_length=20, default="CHECK IT OUT")
+    link = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text="Enter a URL (https://...) or an app route (e.g., '/events', '/resources')"
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

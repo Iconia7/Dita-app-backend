@@ -13,7 +13,7 @@ from api.views import (
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'events', EventViewSet)
-router.register(r'payments', PaymentViewSet)
+router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'announcements', AnnouncementViewSet)
 router.register(r'resources', ResourceViewSet)
 router.register(r'tasks', views.TaskViewSet, basename='task')

@@ -398,9 +398,13 @@ class PromotionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PromotionSerializer
     permission_classes = [AllowAny]    
 
-class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all()
+class PaymentViewSet(viewsets.ReadOnlyModelViewSet): # Change to ReadOnlyModelViewSet
     serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only show the student THEIR OWN payments
+        return Payment.objects.filter(student=self.request.user)
 
 
 # ==========================================
@@ -454,7 +458,12 @@ class PayHeroCallbackView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        print(f"DEBUG: PayHero Callback: {request.data}")
+        secret_token = request.query_params.get('token')
+        expected_token = os.getenv('PAYHERO_CALLBACK_SECRET')
+
+        if secret_token != expected_token:
+            print(f"SECURITY ALERT: Invalid Callback Token from {request.META.get('REMOTE_ADDR')}")
+            return Response({"message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         callback_data = request.data.get('response') or request.data
         external_reference = callback_data.get('ExternalReference') or callback_data.get('User_Reference')

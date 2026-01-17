@@ -10,12 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from dotenv import load_dotenv
 from pathlib import Path
 import os
 import dj_database_url
 import firebase_admin
 from firebase_admin import credentials
 
+env_path = '/var/www/Dita-app-backend/.env'
+load_dotenv(env_path)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,6 +38,10 @@ else:
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://api.dita.co.ke',
+    'https://62.169.16.219',
+]
 
 # Application definition
 
@@ -107,8 +114,12 @@ WSGI_APPLICATION = 'dita_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'myproject',
+        'USER': 'postgres',
+        'PASSWORD': 'Dita@2026',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -157,7 +168,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -170,8 +181,11 @@ AUTH_USER_MODEL = 'api.User' # CRITICAL: We are using a custom user model
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media' 
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 
 CLOUDINARY_STORAGE = {
@@ -181,15 +195,7 @@ CLOUDINARY_STORAGE = {
 }
 
 # ✅ ADD THIS (New Django 5.0+ Format):
-STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    },
-    # ✅ USE THIS (Standard Storage - Reliable):
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+
 
 # ✅ AND THIS:
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'

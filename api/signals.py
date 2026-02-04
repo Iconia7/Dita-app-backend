@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from firebase_admin import messaging
-from .models import Announcement, User
+from .models import Achievement, Announcement, User, UserAchievement
 
 @receiver(post_save, sender=Announcement)
 def send_push_notification(sender, instance, created, **kwargs):
@@ -14,8 +14,9 @@ def send_push_notification(sender, instance, created, **kwargs):
             if instance.image.url.startswith('http'):
                 image_url = instance.image.url
             else:
-                # If it's a relative path (local storage), prepend domain
-                image_url = f"https://dita-app-backend.onrender.com{instance.image.url}"
+                # If it's a relative path (local storage), prepend domain from env
+                base_url = os.environ.get('BACKEND_URL', 'https://api.dita.co.ke')
+                image_url = f"{base_url}{instance.image.url}"
 
         # 1. Get all tokens
         tokens = list(User.objects.exclude(fcm_token__isnull=True).exclude(fcm_token__exact='').values_list('fcm_token', flat=True))
@@ -60,3 +61,30 @@ def send_push_notification(sender, instance, created, **kwargs):
 
         except Exception as e:
             print(f"❌ Error sending notification: {e}")
+
+@receiver(post_save, sender=User)
+def check_user_achievements(sender, instance, **kwargs):
+    """
+    Automatically grants achievements based on points threshold.
+    """
+    # 1. 'Scholar' Achievement
+    if instance.points >= 500:
+        achievement, created = Achievement.objects.get_or_create(
+            name="Scholar",
+            defaults={
+                "description": "Reached 500 points in academic activities!",
+                "points_threshold": 500
+            }
+        )
+        UserAchievement.objects.get_or_create(user=instance, achievement=achievement)
+
+    # 2. 'Event Explorer' Achievement
+    if instance.points >= 200:
+        achievement, created = Achievement.objects.get_or_create(
+            name="Event Explorer",
+            defaults={
+                "description": "Attended multiple events and earned 200+ points!",
+                "points_threshold": 200
+            }
+        )
+        UserAchievement.objects.get_or_create(user=instance, achievement=achievement)

@@ -17,17 +17,25 @@ import dj_database_url
 import firebase_admin
 from firebase_admin import credentials
 
-env_path = '/var/www/Dita-app-backend/.env'
-load_dotenv(env_path)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env from project root
+env_path = BASE_DIR / '.env'
+load_dotenv(env_path)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3gkyvhz&#f%-8*8n!o2#ur3s2gv(h4#@tai-wsywj__=nxr^hq'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+
+if not SECRET_KEY:
+    raise ValueError(
+        "DJANGO_SECRET_KEY environment variable must be set. "
+        "Generate one with: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'"
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # TODO: Set this to False when deploying to production for real
@@ -36,7 +44,18 @@ if os.environ.get('RENDER'):
 else:
     DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'api.dita.co.ke',
+    '62.169.16.219',
+    'localhost',
+    '127.0.0.1',
+    '10.5.50.78',
+    '*',
+]
+
+# Add Render-specific hosts in production
+if os.environ.get('RENDER'):
+    ALLOWED_HOSTS.append('.onrender.com')
 
 CSRF_TRUSTED_ORIGINS = [
     'https://api.dita.co.ke',
@@ -46,6 +65,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'cloudinary_storage',
     'cloudinary',
     'django.contrib.admin',
@@ -58,7 +78,9 @@ INSTALLED_APPS = [
     'import_export',
     'rest_framework',
     'rest_framework_simplejwt',# API Framework
+    'rest_framework_simplejwt.token_blacklist',  # For token rotation
     'corsheaders',      # Allows Flutter to talk to Django
+    'channels',
     'api',
 ]
 
@@ -67,14 +89,27 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny', # Default to secure
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # More secure default
     ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',  # Anonymous users: 100 requests per hour
+        'user': '1000/hour',  # Authenticated users: 1000 requests per hour
+    },
 }
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=30), # Long for student app convenience
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Short-lived for security
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Reasonable refresh window
+    'ROTATE_REFRESH_TOKENS': True,  # Issue new refresh token on use
+    'BLACKLIST_AFTER_ROTATION': True,  # Invalidate old tokens
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 MIDDLEWARE = [
@@ -107,6 +142,25 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'dita_backend.wsgi.application'
+ASGI_APPLICATION = 'dita_backend.asgi.application'
+
+# Channels Configuration
+REDIS_URL = os.environ.get('REDIS_URL')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        },
+    }
 
 
 # Database
@@ -114,24 +168,20 @@ WSGI_APPLICATION = 'dita_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'myproject',
-        'USER': 'postgres',
-        'PASSWORD': 'Dita@2026',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
-# If we are on Render, use PostgreSQL
-if os.environ.get('RENDER'):
+# If DATABASE_URL is set, use it (works for VPS with Postgres and Render)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
     import dj_database_url
-    
-    db_from_env = dj_database_url.config(
-        conn_max_age=0,    # <--- CHANGE THIS to 0 (forces new connection every time)
-        ssl_require=True
+    DATABASES['default'] = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=0,
+        ssl_require=True if not DEBUG else False # SSL in production
     )
-    DATABASES['default'].update(db_from_env)
 
 
 # Password validation
@@ -175,7 +225,29 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS Configuration - Restrict to specific origins
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # Local development
+    'https://api.dita.co.ke',
+    'https://62.169.16.219',
+]
+
+# Allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow specific headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 AUTH_USER_MODEL = 'api.User' # CRITICAL: We are using a custom user model
 
 MEDIA_URL = '/media/'
@@ -201,6 +273,34 @@ CLOUDINARY_STORAGE = {
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
+
+# ==========================================
+#  GOOGLE / FIREBASE CREDENTIALS CONFIG
+# ==========================================
+
+# ==========================================
+#  SECURITY HEADERS
+# ==========================================
+
+# XSS Protection
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# HTTPS/SSL Settings (Production only)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# Session Security
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # ==========================================
 #  GOOGLE / FIREBASE CREDENTIALS CONFIG

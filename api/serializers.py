@@ -2,7 +2,63 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.db.models import Q
-from .models import AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Promotion, Resource, Task, User, Event, Payment, Announcement
+from .models import Achievement, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, GroupMessage, LostItem, Promotion, Resource, StudyGroup, Task, User, UserAchievement, Event, Payment, Announcement, Story, StoryComment
+
+class StorySerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    user_avatar = serializers.SerializerMethodField()
+    is_viewed = serializers.SerializerMethodField()
+
+    is_liked = serializers.SerializerMethodField()
+    likes = serializers.IntegerField(source='total_likes', read_only=True)
+    comment_count = serializers.IntegerField(source='comments.count', read_only=True)
+
+    class Meta:
+        model = Story
+        fields = ['id', 'username', 'user_avatar', 'image', 'video', 'caption', 'created_at', 'is_viewed', 'is_liked', 'likes', 'comment_count']
+        read_only_fields = ['user', 'created_at', 'likes']
+
+    def get_user_avatar(self, obj):
+        if obj.user.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.avatar.url)
+        return None
+
+    def get_is_viewed(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.viewed_by.filter(id=request.user.id).exists()
+        return False
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.liked_by.filter(id=request.user.id).exists()
+        return False
+
+class StoryCommentSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    avatar = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StoryComment
+        fields = ['id', 'story', 'username', 'avatar', 'text', 'created_at', 'is_owner']
+        read_only_fields = ['user', 'created_at']
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.user == request.user
+        return False
+
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.avatar.url)
+        return None
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -222,4 +278,45 @@ class PromotionSerializer(serializers.ModelSerializer):
 class AppConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppConfig
-        fields = ['maintenance_mode', 'maintenance_title', 'maintenance_message']        
+        fields = ['maintenance_mode', 'maintenance_title', 'maintenance_message']
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = '__all__'
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    achievement_name = serializers.ReadOnlyField(source='achievement.name')
+    achievement_description = serializers.ReadOnlyField(source='achievement.description')
+    achievement_icon = serializers.ReadOnlyField(source='achievement.icon_url')
+
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement_name', 'achievement_description', 'achievement_icon', 'earned_at']
+
+class GroupMessageSerializer(serializers.ModelSerializer):
+    username = serializers.ReadOnlyField(source='user.username')
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GroupMessage
+        fields = ['id', 'username', 'avatar', 'content', 'timestamp']
+
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            return obj.user.avatar.url
+        return None
+
+class StudyGroupSerializer(serializers.ModelSerializer):
+    member_count = serializers.IntegerField(source='members.count', read_only=True)
+    is_member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudyGroup
+        fields = ['id', 'name', 'course_code', 'description', 'member_count', 'is_member', 'created_at']
+
+    def get_is_member(self, obj):
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            return obj.members.filter(id=user.id).exists()
+        return False

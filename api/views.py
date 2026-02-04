@@ -14,17 +14,25 @@ from django.db.models import Q
 # DRF Imports
 from api.permissions import IsOwnerOrReadOnly
 from dita_backend.utils import process_exam_excel
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets, status, generics, permissions
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
-from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, Promotion, Task, User, Event, Payment, Resource, Announcement
+from .models import (
+    Achievement, Announcement, AppConfig, AppUpdate, CommunityComment, CommunityPost, 
+    Event, Exam, GroupMessage, LostItem, Payment, Promotion, Resource, Story, StoryComment, 
+    StudyGroup, Task, User, UserAchievement
+)
 from .serializers import (
-    AppConfigSerializer, CommunityCommentSerializer, CommunityPostSerializer, ExamSerializer, MyTokenObtainPairSerializer, PromotionSerializer, TaskSerializer, UserSerializer, EventSerializer, PaymentSerializer, 
-    RegisterSerializer, ResourceSerializer, AnnouncementSerializer
+    AchievementSerializer, AnnouncementSerializer, AppConfigSerializer, AppUpdateSerializer,
+    CommunityCommentSerializer, CommunityPostSerializer, EventSerializer, 
+    ExamSerializer, GroupMessageSerializer, MyTokenObtainPairSerializer, 
+    PaymentSerializer, RegisterSerializer, ResourceSerializer, StorySerializer, StoryCommentSerializer,
+    StudyGroupSerializer, TaskSerializer, UserAchievementSerializer, UserSerializer,
+    PromotionSerializer
 )
 from .payhero_utils import initiate_payhero_push
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -35,20 +43,22 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 # ==========================================
 try:
     if not firebase_admin._apps:
-        # 1. Determine the path based on Environment (Render vs Local)
-        if os.environ.get('RENDER'):
-            # Render stores Secret Files in /etc/secrets/
-            cred_path = '/etc/secrets/serviceAccountKey.json'
-        else:
-            # Local development path (Check inside dita_backend folder first)
-            cred_path = os.path.join(settings.BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
-            
-            # Fallback: Check root folder if not found in subfolder
-            if not os.path.exists(cred_path):
-                 cred_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')
+        # 1. Determine the path based on Env Vars or defaults
+        cred_path = os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH')
+        
+        if not cred_path:
+            if os.environ.get('RENDER'):
+                cred_path = '/etc/secrets/serviceAccountKey.json'
+            else:
+                # Local development path
+                cred_path = os.path.join(settings.BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
+                
+                # Fallback: Check root folder
+                if not os.path.exists(cred_path):
+                     cred_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')
 
         # 2. Initialize the App
-        if os.path.exists(cred_path):
+        if cred_path and os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
             print(f"✅ Firebase Admin SDK Initialized from: {cred_path}")
@@ -57,7 +67,8 @@ try:
             print("   Secure Phone Login will fail until the file is added.")
 
 except Exception as e:
-    print(f"❌ Firebase Init Error: {e}")               
+    # Use a warning instead of error so it doesn't look like a crash in the logs
+    print(f"⚠️ Firebase Init Warning: {e}")
 
 
 # ==========================================
@@ -177,6 +188,63 @@ def upload_timetable(request):
     return render(request, 'upload.html', context)
         
         
+class StoryViewSet(viewsets.ModelViewSet):
+    queryset = Story.objects.all()
+    serializer_class = StorySerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        # Only show stories created in the last 24 hours
+        time_threshold = timezone.now() - timezone.timedelta(hours=24)
+        return Story.objects.filter(created_at__gte=time_threshold).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def mark_as_viewed(self, request, pk=None):
+        story = self.get_object()
+        user = request.user
+        if not story.viewed_by.filter(id=user.id).exists():
+            story.viewed_by.add(user)
+        return Response({'status': 'viewed'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def like(self, request, pk=None):
+        story = self.get_object()
+        user = request.user
+        if story.liked_by.filter(id=user.id).exists():
+            story.liked_by.remove(user)
+            liked = False
+        else:
+            story.liked_by.add(user)
+            liked = True
+        return Response({'status': 'toggled', 'likes': story.total_likes, 'is_liked': liked})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def comment(self, request, pk=None):
+        story = self.get_object()
+        text = request.data.get('text')
+        if not text:
+            return Response({'error': 'Comment text required'}, status=400)
+        comment = StoryComment.objects.create(story=story, user=request.user, text=text)
+        serializer = StoryCommentSerializer(comment, context={'request': request})
+        return Response(serializer.data, status=201)
+
+class StoryCommentViewSet(viewsets.ModelViewSet):
+    queryset = StoryComment.objects.all()
+    serializer_class = StoryCommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        story_id = self.request.query_params.get('story_id')
+        if story_id:
+            return self.queryset.filter(story_id=story_id).order_by('created_at')
+        return self.queryset
+
 class CommunityPostViewSet(viewsets.ModelViewSet):
     queryset = CommunityPost.objects.all()
     serializer_class = CommunityPostSerializer
@@ -500,3 +568,42 @@ class PayHeroCallbackView(APIView):
             print(f"FAILED: Payment failed for ref {external_reference}")
 
         return Response({"ResultCode": 0, "ResultDesc": "Accepted"}, status=status.HTTP_200_OK)
+class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Achievement.objects.all()
+    serializer_class = AchievementSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class UserAchievementViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserAchievementSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAchievement.objects.filter(user=self.request.user)
+
+class StudyGroupViewSet(viewsets.ModelViewSet):
+    queryset = StudyGroup.objects.all()
+    serializer_class = StudyGroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        group = serializer.save(creator=self.request.user)
+        group.members.add(self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def join(self, request, pk=None):
+        group = self.get_object()
+        group.members.add(request.user)
+        return Response({'status': 'joined'})
+
+    @action(detail=True, methods=['post'])
+    def leave(self, request, pk=None):
+        group = self.get_object()
+        group.members.remove(request.user)
+        return Response({'status': 'left'})
+
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        group = self.get_object()
+        messages = group.messages.all()
+        serializer = GroupMessageSerializer(messages, many=True)
+        return Response(serializer.data)

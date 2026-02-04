@@ -21,6 +21,11 @@ router.register(r'exams', views.ExamViewSet)
 router.register(r'community-posts', views.CommunityPostViewSet)
 router.register(r'community-comments', views.CommunityCommentViewSet)
 router.register(r'promotions', views.PromotionViewSet)
+router.register(r'stories', views.StoryViewSet)
+router.register(r'story-comments', views.StoryCommentViewSet)
+router.register(r'achievements', views.AchievementViewSet)
+router.register(r'user-achievements', views.UserAchievementViewSet, basename='user-achievement')
+router.register(r'study-groups', views.StudyGroupViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

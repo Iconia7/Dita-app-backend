@@ -45,6 +45,42 @@ class User(AbstractUser):
             return True
         return False
     
+class Story(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='stories')
+    image = models.ImageField(upload_to='stories/', null=True, blank=True)
+    video = models.FileField(upload_to='stories/videos/', null=True, blank=True)
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    viewed_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='viewed_stories', blank=True)
+    liked_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='liked_stories', blank=True)
+
+    @property
+    def is_expired(self):
+        return self.created_at < timezone.now() - timezone.timedelta(hours=24)
+
+    class Meta:
+        verbose_name_plural = "Stories"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}'s Story - {self.id}"
+    
+    @property
+    def total_likes(self):
+        return self.liked_by.count()
+
+class StoryComment(models.Model):
+    story = models.ForeignKey(Story, related_name='comments', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on Story {self.story.id}"
+    
 class CommunityPost(models.Model):
     CATEGORY_CHOICES = [
         ('ACADEMIC', 'Academic Help 📚'),
@@ -84,6 +120,27 @@ class CommunityComment(models.Model):
     def __str__(self):
         return f"Comment by {self.user.username}"    
     
+class Achievement(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    icon_url = models.URLField(blank=True, null=True)
+    points_threshold = models.IntegerField(default=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class UserAchievement(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='achievements')
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'achievement')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.achievement.name}"
+
 class LostItem(models.Model):
     TYPE_CHOICES = [
         ('LOST', 'Lost 🛑'),
@@ -118,6 +175,29 @@ class Task(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user.username}" 
+
+class StudyGroup(models.Model):
+    name = models.CharField(max_length=100)
+    course_code = models.CharField(max_length=50)
+    description = models.TextField()
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_groups')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='study_groups')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.course_code}: {self.name}"
+
+class GroupMessage(models.Model):
+    group = models.ForeignKey(StudyGroup, on_delete=models.CASCADE, related_name='messages')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} in {self.group.name}: {self.content[:30]}"
     
 class Exam(models.Model):
     # REMOVED unique=True so we can have multiple venues for the same exam

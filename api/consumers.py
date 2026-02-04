@@ -5,7 +5,7 @@ from .models import StudyGroup, GroupMessage, User
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.group_id = self.scope['url_route']['kwargs']['group_id']
+        self.group_id = self.scope['url_route']['kwargs']['group_id'].strip('/')
         self.room_group_name = f'chat_{self.group_id}'
 
         # Join room group

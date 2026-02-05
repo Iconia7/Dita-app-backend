@@ -332,7 +332,7 @@ class StudyGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudyGroup
-        fields = ['id', 'name', 'course_code', 'description', 'member_count', 'is_member', 'created_at']
+        fields = ['id', 'name', 'course_code', 'description', 'member_count', 'is_member', 'created_at', 'creator']
 
     def get_is_member(self, obj):
         user = self.context.get('request').user

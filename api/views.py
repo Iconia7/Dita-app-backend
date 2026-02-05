@@ -14,7 +14,7 @@ from django.db.models import Q
 # DRF Imports
 from api.permissions import IsOwnerOrReadOnly
 from dita_backend.utils import process_exam_excel
-from rest_framework import viewsets, status, generics, permissions
+from rest_framework import viewsets, status, generics, permissions, filters
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
@@ -403,17 +403,10 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def check_in(self, request, pk=None):
         event = self.get_object()
-        user_id = request.data.get('user_id')
-        if not user_id:
-            return Response({'error': 'User ID required'}, status=400)
-
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=404)
+        user = request.user
 
         if event.checked_in_users.filter(id=user.id).exists():
             return Response({'message': 'Already checked in!'}, status=400)
@@ -583,6 +576,26 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
     queryset = StudyGroup.objects.all()
     serializer_class = StudyGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'course_code', 'description']
+    ordering_fields = ['created_at', 'name']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        """Annotate queryset with member status for current user"""
+        from django.db.models import Exists, OuterRef, Count
+        
+        user = self.request.user
+        queryset = StudyGroup.objects.annotate(
+            is_member=Exists(
+                StudyGroup.objects.filter(
+                    id=OuterRef('pk'),
+                    members=user
+                )
+            ),
+            member_count=Count('members')
+        )
+        return queryset
 
     def perform_create(self, serializer):
         group = serializer.save(creator=self.request.user)

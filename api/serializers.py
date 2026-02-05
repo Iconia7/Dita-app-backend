@@ -8,6 +8,8 @@ class StorySerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     user_avatar = serializers.SerializerMethodField()
     is_viewed = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    video = serializers.SerializerMethodField()
 
     is_liked = serializers.SerializerMethodField()
     likes = serializers.IntegerField(source='total_likes', read_only=True)
@@ -17,6 +19,23 @@ class StorySerializer(serializers.ModelSerializer):
         model = Story
         fields = ['id', 'username', 'user_avatar', 'image', 'video', 'caption', 'created_at', 'is_viewed', 'is_liked', 'likes', 'comment_count']
         read_only_fields = ['user', 'created_at', 'likes']
+
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+        return None
+
+    def get_video(self, obj):
+        if obj.video:
+            # CloudinaryField returns a CloudinaryResource object
+            # We need to get the URL from it
+            try:
+                return obj.video.url
+            except:
+                return None
+        return None
 
     def get_user_avatar(self, obj):
         if obj.user.avatar:

@@ -201,6 +201,38 @@ class StoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticatedOrReadOnly])
+    def grouped(self, request):
+        """Return stories grouped by user"""
+        time_threshold = timezone.now() - timezone.timedelta(hours=24)
+        stories = Story.objects.filter(created_at__gte=time_threshold).select_related('user').prefetch_related('viewed_by').order_by('-created_at')
+        
+        # Group by user
+        from collections import OrderedDict
+        grouped = OrderedDict()
+        
+        for story in stories:
+            user_id = story.user.id
+            if user_id not in grouped:
+                grouped[user_id] = {
+                    'user_id': user_id,
+                    'username': story.user.username,
+                    'user_avatar': request.build_absolute_uri(story.user.avatar.url) if story.user.avatar else None,
+                    'has_unviewed': False,
+                    'stories': []
+                }
+            
+            # Check if this story is unviewed by current user
+            if request.user.is_authenticated:
+                if not story.viewed_by.filter(id=request.user.id).exists():
+                    grouped[user_id]['has_unviewed'] = True
+            
+            # Serialize the story
+            story_data = StorySerializer(story, context={'request': request}).data
+            grouped[user_id]['stories'].append(story_data)
+        
+        return Response(list(grouped.values()))
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_as_viewed(self, request, pk=None):
         story = self.get_object()

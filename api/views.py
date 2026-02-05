@@ -24,7 +24,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 from .models import (
     Achievement, Announcement, AppConfig, AppUpdate, CommunityComment, CommunityPost, 
     Event, Exam, GroupMessage, LostItem, Payment, Promotion, Resource, Story, StoryComment, 
-    StudyGroup, Task, User, UserAchievement
+    StudyGroup, Task, User, UserAchievement, RSVP
 )
 from .serializers import (
     AchievementSerializer, AnnouncementSerializer, AppConfigSerializer, AppUpdateSerializer,
@@ -427,13 +427,12 @@ class EventViewSet(viewsets.ModelViewSet):
             'new_points': user.points
         })
     
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def rsvp(self, request, pk=None):
         event = self.get_object()
-        user_id = request.data.get('user_id')
+        user = request.user
         
         try:
-            user = User.objects.get(id=user_id)
             rsvp, created = RSVP.objects.get_or_create(user=user, event=event)
             
             if not created:

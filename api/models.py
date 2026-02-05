@@ -2,6 +2,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from cloudinary.models import CloudinaryField
 
 class User(AbstractUser):
     fcm_token = models.CharField(max_length=255, blank=True, null=True)
@@ -48,7 +49,7 @@ class User(AbstractUser):
 class Story(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='stories')
     image = models.ImageField(upload_to='stories/', null=True, blank=True)
-    video = models.FileField(upload_to='stories/videos/', null=True, blank=True)
+    video = CloudinaryField('video', resource_type='video', null=True, blank=True)
     caption = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     viewed_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='viewed_stories', blank=True)

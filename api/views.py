@@ -371,6 +371,47 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         return queryset
     
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def update_game_stats(self, request):
+        """Update user's game statistics"""
+        user = request.user
+        game_type = request.data.get('game_type')  # 'snake', 'binary', 'ram'
+        
+        if game_type == 'snake':
+            high_score = request.data.get('high_score', 0)
+            if high_score > user.snake_high_score:
+                user.snake_high_score = high_score
+            user.snake_games_played += 1
+            
+        elif game_type == 'binary':
+            difficulty = request.data.get('difficulty')  # 'easy', 'medium', 'hard'
+            won = request.data.get('won', False)
+            
+            user.binary_games_played += 1
+            if won:
+                if difficulty == 'easy':
+                    user.binary_wins_easy += 1
+                elif difficulty == 'medium':
+                    user.binary_wins_medium += 1
+                elif difficulty == 'hard':
+                    user.binary_wins_hard += 1
+                    
+        elif game_type == 'ram':
+            levels = request.data.get('levels_completed', 0)
+            user.ram_levels_completed = max(user.ram_levels_completed, levels)
+            user.ram_games_played += 1
+        
+        user.save()  # This triggers achievement check via signals
+        
+        return Response({
+            'message': 'Game stats updated',
+            'stats': {
+                'snake_high_score': user.snake_high_score,
+                'binary_wins_hard': user.binary_wins_hard,
+                'binary_total_wins': user.binary_wins_easy + user.binary_wins_medium + user.binary_wins_hard,
+            }
+        })
+    
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def check_update(request):

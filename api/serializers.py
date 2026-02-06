@@ -39,7 +39,7 @@ class StorySerializer(serializers.ModelSerializer):
                 
         return data
 
-def get_user_avatar(self, obj):
+    def get_user_avatar(self, obj):
     if obj.user.avatar:
         try:
             # Return the URL directly (Cloudinary already returns full URL)

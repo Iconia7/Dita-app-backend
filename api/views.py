@@ -263,6 +263,30 @@ class StoryViewSet(viewsets.ModelViewSet):
         serializer = StoryCommentSerializer(comment, context={'request': request})
         return Response(serializer.data, status=201)
 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def viewers(self, request, pk=None):
+        """Get list of users who viewed this story"""
+        story = self.get_object()
+        
+        # Only allow creator to see viewers
+        if story.user != request.user:
+            return Response({'error': 'Not authorized'}, status=403)
+        
+        viewers_data = story.viewed_by.all().values('id', 'username', 'avatar')
+        viewers_list = []
+        for viewer in viewers_data:
+            viewer_dict = {
+                'id': viewer['id'],
+                'username': viewer['username'],
+                'avatar': request.build_absolute_uri(f"/media/{viewer['avatar']}") if viewer['avatar'] else None
+            }
+            viewers_list.append(viewer_dict)
+        
+        return Response({
+            'count': len(viewers_list),
+            'viewers': viewers_list
+        })
+
 class StoryCommentViewSet(viewsets.ModelViewSet):
     queryset = StoryComment.objects.all()
     serializer_class = StoryCommentSerializer

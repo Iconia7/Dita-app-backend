@@ -63,29 +63,81 @@ def send_push_notification(sender, instance, created, **kwargs):
         except Exception as e:
             print(f"❌ Error sending notification: {e}")
 
+
 @receiver(post_save, sender=User)
 def check_user_achievements(sender, instance, **kwargs):
     """
-    Automatically grants achievements based on points threshold.
+    Automatically grants achievements based on points and game stats.
     """
-    # 1. 'Scholar' Achievement
+    def grant_achievement(name, description, threshold):
+        """Helper to grant achievement if not already earned"""
+        achievement, _ = Achievement.objects.get_or_create(
+            name=name,
+            defaults={
+                "description": description,
+                "points_threshold": threshold
+            }
+        )
+        UserAchievement.objects.get_or_create(user=instance, achievement=achievement)
+    
+    # Point-based achievements
+    if instance.points >= 1000:
+        grant_achievement("Point Collector", "Earned 1000 total points!", 1000)
+    
     if instance.points >= 500:
-        achievement, created = Achievement.objects.get_or_create(
-            name="Scholar",
-            defaults={
-                "description": "Reached 500 points in academic activities!",
-                "points_threshold": 500
-            }
-        )
-        UserAchievement.objects.get_or_create(user=instance, achievement=achievement)
-
-    # 2. 'Event Explorer' Achievement
+        grant_achievement("Scholar", "Reached 500 points in academic activities!", 500)
+        
     if instance.points >= 200:
-        achievement, created = Achievement.objects.get_or_create(
-            name="Event Explorer",
-            defaults={
-                "description": "Attended multiple events and earned 200+ points!",
-                "points_threshold": 200
+        grant_achievement("Event Explorer", "Attended multiple events and earned 200+ points!", 200)
+    
+    # Binary Tac-Toe achievements
+    if instance.binary_wins_hard >= 5:
+        grant_achievement("AI Slayer", "Defeated the hard AI 5 times!", 0)
+    
+    if instance.binary_wins_easy + instance.binary_wins_medium + instance.binary_wins_hard >= 10:
+        grant_achievement("Strategy Master", "Won 10 Binary Tac-Toe games!", 0)
+    
+    # Snake achievements
+    if instance.snake_high_score >= 1000:
+        grant_achievement("Speed Demon", "Scored 1000+ points in Snake!", 0)
+    
+    # General gaming achievements
+    games_played = (instance.snake_games_played > 0) + (instance.binary_games_played > 0) + (instance.ram_games_played > 0)
+    if games_played >= 3:
+        grant_achievement("Game Hobbyist", "Played all 3 games!", 0)
+
+
+@receiver(post_save, sender=UserAchievement)
+def notify_achievement_unlock(sender, instance, created, **kwargs):
+    """
+    Send push notification when new achievement is unlocked.
+    """
+    if not created:
+        return  # Only notify for NEW achievements
+    
+    user = instance.user
+    achievement = instance.achievement
+    
+    # Only send if user has an FCM token
+    if not user.fcm_token:
+        return
+    
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title="🏆 Achievement Unlocked!",
+                body=f"{achievement.name}: {achievement.description}",
+            ),
+            token=user.fcm_token,
+            data={
+                'type': 'achievement',
+                'achievement_id': str(achievement.id),
+                'achievement_name': achievement.name,
             }
         )
-        UserAchievement.objects.get_or_create(user=instance, achievement=achievement)
+        
+        response = messaging.send(message)
+        print(f"✅ Achievement notification sent to {user.username}: {achievement.name}")
+        
+    except Exception as e:
+        print(f"❌ Failed to send achievement notification to {user.username}: {e}")

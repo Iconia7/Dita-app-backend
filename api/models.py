@@ -7,6 +7,16 @@ from cloudinary.models import CloudinaryField
 class User(AbstractUser):
     fcm_token = models.CharField(max_length=255, blank=True, null=True)
     points = models.IntegerField(default=0)
+    
+    # Game Statistics for Achievements
+    snake_high_score = models.IntegerField(default=0)
+    snake_games_played = models.IntegerField(default=0)
+    binary_wins_easy = models.IntegerField(default=0)
+    binary_wins_medium = models.IntegerField(default=0)
+    binary_wins_hard = models.IntegerField(default=0)
+    binary_games_played = models.IntegerField(default=0)
+    ram_levels_completed = models.IntegerField(default=0)
+    ram_games_played = models.IntegerField(default=0)
     # ... existing fields ...
     admission_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     program = models.CharField(max_length=100, null=True, blank=True)

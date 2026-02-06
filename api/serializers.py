@@ -8,9 +8,8 @@ class StorySerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     user_avatar = serializers.SerializerMethodField()
     is_viewed = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    video = serializers.SerializerMethodField()
-
+    
+    # Use ImageField for uploads, but override to_representation for URL output
     is_liked = serializers.SerializerMethodField()
     likes = serializers.IntegerField(source='total_likes', read_only=True)
     comment_count = serializers.IntegerField(source='comments.count', read_only=True)
@@ -20,25 +19,25 @@ class StorySerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'user_avatar', 'image', 'video', 'caption', 'created_at', 'is_viewed', 'is_liked', 'likes', 'comment_count']
         read_only_fields = ['user', 'created_at', 'likes']
 
-    def get_image(self, obj):
-        if obj.image:
-            # CloudinaryField returns a CloudinaryResource object
-            # We need to get the URL from it
+    def to_representation(self, instance):
+        """Override to return full URLs for image/video"""
+        data = super().to_representation(instance)
+        
+        # Convert image to full URL
+        if instance.image:
             try:
-                return obj.image.url
+                data['image'] = instance.image.url
             except:
-                return None
-        return None
-
-    def get_video(self, obj):
-        if obj.video:
-            # CloudinaryField returns a CloudinaryResource object
-            # We need to get the URL from it
+                data['image'] = None
+        
+        # Convert video to full URL  
+        if instance.video:
             try:
-                return obj.video.url
+                data['video'] = instance.video.url
             except:
-                return None
-        return None
+                data['video'] = None
+                
+        return data
 
     def get_user_avatar(self, obj):
         if obj.user.avatar:

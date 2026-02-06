@@ -6,7 +6,11 @@ from django.utils.html import format_html
 import qrcode
 import base64
 from io import BytesIO
-from .models import RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, LostItem, Promotion, Task, User, Event, Payment, Announcement, Resource # <--- Added Resource here
+from .models import (
+    RSVP, AppConfig, AppUpdate, CommunityComment, CommunityPost, Exam, 
+    LostItem, Promotion, Task, User, Event, Payment, Announcement, Resource,
+    Story, StudyGroup  # Added for admin panel registration
+)
 
 admin.site.register(RSVP)
 @admin.register(CommunityPost)
@@ -150,3 +154,55 @@ class AppConfigAdmin(admin.ModelAdmin):
     # Optional: Prevent deleting the configuration
     def has_delete_permission(self, request, obj=None):
         return False    
+
+# 6. Story Admin
+@admin.register(Story)
+class StoryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'caption_preview', 'has_media', 'created_at', 'is_expired', 'likes_count', 'views_count')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'caption')
+    readonly_fields = ('created_at', 'likes_count', 'views_count')
+    
+    def caption_preview(self, obj):
+        if not obj.caption:
+            return '(No caption)'
+        return (obj.caption[:50] + '...') if len(obj.caption) > 50 else obj.caption
+    caption_preview.short_description = 'Caption'
+    
+    def has_media(self, obj):
+        return bool(obj.image or obj.video)
+    has_media.boolean = True
+    has_media.short_description = 'Media?'
+    
+    def likes_count(self, obj):
+        return obj.liked_by.count()
+    likes_count.short_description = 'Likes'
+    
+    def views_count(self, obj):
+        return obj.viewed_by.count()
+    views_count.short_description = 'Views'
+    
+    def is_expired(self, obj):
+        return obj.is_expired
+    is_expired.boolean = True
+    is_expired.short_description = 'Expired?'
+
+# 7. StudyGroup Admin
+@admin.register(StudyGroup)
+class StudyGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'course_code', 'creator', 'member_count', 'created_at')
+    list_filter = ('course_code', 'created_at')
+    search_fields = ('name', 'course_code', 'creator__username', 'description')
+    readonly_fields = ('created_at', 'member_count', 'member_list')
+    
+    def member_count(self, obj):
+        return obj.members.count()
+    member_count.short_description = 'Members'
+    
+    def member_list(self, obj):
+        members = obj.members.all()[:10]  # Show first 10 members
+        member_names = ', '.join([m.username for m in members])
+        if obj.members.count() > 10:
+            member_names += f' ... (+{obj.members.count() - 10} more)'
+        return member_names or 'No members yet'
+    member_list.short_description = 'Member List'

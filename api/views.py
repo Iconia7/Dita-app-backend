@@ -730,3 +730,29 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
         messages = group.messages.all()
         serializer = GroupMessageSerializer(messages, many=True)
         return Response(serializer.data)
+
+
+# ============================================================================
+# STUDY GROUP LANDING PAGE (for Universal Links)
+# ============================================================================
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def group_landing_page(request, group_id):
+    """
+    Landing page for study group deep links.
+    If user has app installed, App Links will intercept and open app directly.
+    Otherwise, shows group info with download/open app buttons.
+    """
+    try:
+        group = StudyGroup.objects.get(id=group_id)
+        
+        context = {
+            'group': group,
+            'app_download_url': 'https://play.google.com/store/apps/details?id=com.dita.mobile',
+            'app_store_url': 'https://apps.apple.com/app/dita/id123456789',
+        }
+        
+        return render(request, 'api/group_landing.html', context)
+    except StudyGroup.DoesNotExist:
+        return render(request, 'api/group_not_found.html', status=404)

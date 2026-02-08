@@ -45,6 +45,7 @@ urlpatterns = [
     path('public/exams/', views.public_exam_search, name='public_exam_search'),
     path('api/leaderboard/', views.get_leaderboard, name='leaderboard'),
     path('api/auth/reset-password-phone/', views.reset_password_phone, name='reset-password-phone'),
+    path('group/<int:group_id>/', views.group_landing_page, name='group-landing'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
 # ^^^ FIXED: changed 'stat' to 'static'

@@ -39,13 +39,11 @@ class StorySerializer(serializers.ModelSerializer):
                 
         return data
 
-    def get_user_avatar(self, obj):
+    def get_avatar(self, obj):
         if obj.user.avatar:
-            try:
-            # Return the URL directly (Cloudinary already returns full URL)
-                return obj.user.avatar.url
-            except:
-                return None
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.avatar.url)
         return None
 
     def get_is_viewed(self, obj):

@@ -373,38 +373,52 @@ class UserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def update_game_stats(self, request):
-        """Update user's game statistics"""
+        """Update user's game statistics and award points"""
         user = request.user
         game_type = request.data.get('game_type')  # 'snake', 'binary', 'ram'
+        points_earned = 0
         
         if game_type == 'snake':
             high_score = request.data.get('high_score', 0)
+            score = request.data.get('score', 0)
             if high_score > user.snake_high_score:
                 user.snake_high_score = high_score
             user.snake_games_played += 1
+            # Award points based on score (1 point per 10 data packets)
+            points_earned = score // 10
             
         elif game_type == 'binary':
             difficulty = request.data.get('difficulty')  # 'easy', 'medium', 'hard'
             won = request.data.get('won', False)
+            draw = request.data.get('draw', False)
             
             user.binary_games_played += 1
             if won:
                 if difficulty == 'easy':
                     user.binary_wins_easy += 1
+                    points_earned = 10
                 elif difficulty == 'medium':
                     user.binary_wins_medium += 1
+                    points_earned = 20
                 elif difficulty == 'hard':
                     user.binary_wins_hard += 1
+                    points_earned = 30
+            elif draw:
+                points_earned = 5
                     
         elif game_type == 'ram':
             levels = request.data.get('levels_completed', 0)
+            points_earned = request.data.get('points', 0) # RAM points are more complex, so we accept them from frontend
             user.ram_levels_completed = max(user.ram_levels_completed, levels)
             user.ram_games_played += 1
         
+        user.points += points_earned
         user.save()  # This triggers achievement check via signals
         
         return Response({
-            'message': 'Game stats updated',
+            'message': f'Game stats updated. +{points_earned} points awarded.',
+            'points_earned': points_earned,
+            'total_points': user.points,
             'stats': {
                 'snake_high_score': user.snake_high_score,
                 'binary_wins_hard': user.binary_wins_hard,

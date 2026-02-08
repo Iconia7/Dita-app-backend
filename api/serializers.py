@@ -58,6 +58,11 @@ class StorySerializer(serializers.ModelSerializer):
             return obj.liked_by.filter(id=request.user.id).exists()
         return False
 
+class StoryViewerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'avatar']
+
 class StoryCommentSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     avatar = serializers.SerializerMethodField()

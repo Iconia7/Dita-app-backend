@@ -31,7 +31,7 @@ from .serializers import (
     CommunityCommentSerializer, CommunityPostSerializer, EventSerializer, 
     ExamSerializer, GroupMessageSerializer, MyTokenObtainPairSerializer, 
     PaymentSerializer, RegisterSerializer, ResourceSerializer, StorySerializer, StoryCommentSerializer,
-    StudyGroupSerializer, TaskSerializer, UserAchievementSerializer, UserSerializer,
+    StoryViewerSerializer, StudyGroupSerializer, TaskSerializer, UserAchievementSerializer, UserSerializer,
     PromotionSerializer
 )
 from .payhero_utils import initiate_payhero_push
@@ -272,19 +272,12 @@ class StoryViewSet(viewsets.ModelViewSet):
         if story.user != request.user:
             return Response({'error': 'Not authorized'}, status=403)
         
-        viewers_data = story.viewed_by.all().values('id', 'username', 'avatar')
-        viewers_list = []
-        for viewer in viewers_data:
-            viewer_dict = {
-                'id': viewer['id'],
-                'username': viewer['username'],
-                'avatar': request.build_absolute_uri(f"/media/{viewer['avatar']}") if viewer['avatar'] else None
-            }
-            viewers_list.append(viewer_dict)
+        viewers = story.viewed_by.all()
+        serializer = StoryViewerSerializer(viewers, many=True, context={'request': request})
         
         return Response({
-            'count': len(viewers_list),
-            'viewers': viewers_list
+            'count': viewers.count(),
+            'viewers': serializer.data
         })
 
 class StoryCommentViewSet(viewsets.ModelViewSet):

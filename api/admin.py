@@ -1,28 +1,30 @@
-from import_export import resources  # <--- THIS IS THE CORRECT ONE
-from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from import_export.admin import ImportExportModelAdmin
-from django.utils.html import format_html
-import qrcode
 import base64
 from io import BytesIO
+
+import qrcode
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.utils.html import format_html
+from import_export import resources  # <--- THIS IS THE CORRECT ONE
+from import_export.admin import ImportExportModelAdmin
+
+from .models import StudyGroup  # Added for admin panel registration
 from .models import (
     RSVP,
+    Announcement,
     AppConfig,
     AppUpdate,
     CommunityComment,
     CommunityPost,
+    Event,
     Exam,
     LostItem,
-    Promotion,
-    Task,
-    User,
-    Event,
     Payment,
-    Announcement,
+    Promotion,
     Resource,
     Story,
-    StudyGroup,  # Added for admin panel registration
+    Task,
+    User,
 )
 
 admin.site.register(RSVP)

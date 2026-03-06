@@ -3,25 +3,36 @@ from datetime import timedelta
 
 # --- 1. NEW IMPORTS FOR SECURITY ---
 import firebase_admin
-from firebase_admin import auth, credentials
-
 from django.conf import settings
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
 from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+from firebase_admin import auth, credentials
+from rest_framework import filters, generics, permissions, status, viewsets
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 # DRF Imports
 from api.permissions import IsOwnerOrReadOnly
 from config.utils import process_exam_excel
-from rest_framework import viewsets, status, generics, permissions, filters
-from rest_framework.views import APIView
-from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Local Imports
 from .models import (
+    RSVP,
     Achievement,
     Announcement,
     AppConfig,
@@ -30,8 +41,6 @@ from .models import (
     CommunityPost,
     Event,
     Exam,
-    GroupMessage,
-    LostItem,
     Payment,
     Promotion,
     Resource,
@@ -41,13 +50,12 @@ from .models import (
     Task,
     User,
     UserAchievement,
-    RSVP,
 )
+from .payhero_utils import initiate_payhero_push
 from .serializers import (
     AchievementSerializer,
     AnnouncementSerializer,
     AppConfigSerializer,
-    AppUpdateSerializer,
     CommunityCommentSerializer,
     CommunityPostSerializer,
     EventSerializer,
@@ -55,20 +63,17 @@ from .serializers import (
     GroupMessageSerializer,
     MyTokenObtainPairSerializer,
     PaymentSerializer,
+    PromotionSerializer,
     RegisterSerializer,
     ResourceSerializer,
-    StorySerializer,
     StoryCommentSerializer,
+    StorySerializer,
     StoryViewerSerializer,
     StudyGroupSerializer,
     TaskSerializer,
     UserAchievementSerializer,
     UserSerializer,
-    PromotionSerializer,
 )
-from .payhero_utils import initiate_payhero_push
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # ==========================================
 # 🔥 FIREBASE INITIALIZATION
@@ -693,7 +698,7 @@ class PayHeroCallbackView(APIView):
             print(f"Payment not found for ref: {external_reference}")
             return Response({"message": "Payment not found"}, status=status.HTTP_200_OK)
 
-        if callback_data.get("Success") == True or callback_data.get("Status") == "Success":
+        if callback_data.get("Success") or callback_data.get("Status") == "Success":
             payment.status = "completed"
             payment.mpesa_receipt = callback_data.get("MpesaReceiptNumber")
             payment.save()
@@ -743,7 +748,7 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Annotate queryset with member status for current user"""
-        from django.db.models import Exists, OuterRef, Count
+        from django.db.models import Count, Exists, OuterRef
 
         user = self.request.user
         queryset = StudyGroup.objects.annotate(

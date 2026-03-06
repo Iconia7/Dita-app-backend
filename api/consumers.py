@@ -1,7 +1,9 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
+
 from asgiref.sync import sync_to_async
-from .models import StudyGroup, GroupMessage, User
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+from .models import GroupMessage, StudyGroup, User
 
 
 class ChatConsumer(AsyncWebsocketConsumer):

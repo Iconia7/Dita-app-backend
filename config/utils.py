@@ -1,7 +1,8 @@
-import openpyxl
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
+
+import openpyxl
 
 
 def parse_date_string(date_str):
@@ -49,7 +50,8 @@ def parse_time_range(time_str):
         duration = Decimal(diff) / Decimal(3600)
 
         return start_dt.time(), end_dt.time(), duration
-    except:
+    except Exception as e:
+        print(f"Error parsing time range: {e}")
         return None, None, 0
 
 

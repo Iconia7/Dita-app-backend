@@ -1,8 +1,8 @@
-from django.conf import settings
-from django.utils import timezone
-from django.db import models
-from django.contrib.auth.models import AbstractUser
 from cloudinary.models import CloudinaryField
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):

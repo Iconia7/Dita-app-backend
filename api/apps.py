@@ -1,8 +1,9 @@
-from django.apps import AppConfig
-import firebase_admin
-from firebase_admin import credentials
 import os
+
+import firebase_admin
+from django.apps import AppConfig
 from django.conf import settings
+from firebase_admin import credentials
 
 
 class ApiConfig(AppConfig):
@@ -17,7 +18,7 @@ class ApiConfig(AppConfig):
                 if cred_path and os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
-                    print(f"✅ Firebase initialized successfully in apps.py")
+                    print("✅ Firebase initialized successfully in apps.py")
                 else:
                     print(f"❌ ERROR: serviceAccountKey.json NOT FOUND at: {cred_path}")
             except Exception as e:
@@ -25,4 +26,4 @@ class ApiConfig(AppConfig):
 
         # 2. IMPORT SIGNALS (THIS IS CRITICAL)
         # Without this line, your signals.py file is ignored!
-        import api.signals
+        import api.signals  # noqa: F401

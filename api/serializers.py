@@ -1,27 +1,28 @@
-from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework.exceptions import AuthenticationFailed
 from django.db.models import Q
+from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import (
     Achievement,
+    Announcement,
     AppConfig,
     AppUpdate,
     CommunityComment,
     CommunityPost,
+    Event,
     Exam,
     GroupMessage,
     LostItem,
+    Payment,
     Promotion,
     Resource,
+    Story,
+    StoryComment,
     StudyGroup,
     Task,
     User,
     UserAchievement,
-    Event,
-    Payment,
-    Announcement,
-    Story,
-    StoryComment,
 )
 
 
@@ -60,14 +61,16 @@ class StorySerializer(serializers.ModelSerializer):
         if instance.image:
             try:
                 data["image"] = instance.image.url
-            except:
+            except Exception as e:
+                print(f"Error occurred while fetching image URL: {e}")
                 data["image"] = None
 
         # Convert video to full URL
         if instance.video:
             try:
                 data["video"] = instance.video.url
-            except:
+            except Exception as e:
+                print(f"Error occurred while fetching video URL: {e}")
                 data["video"] = None
 
         return data

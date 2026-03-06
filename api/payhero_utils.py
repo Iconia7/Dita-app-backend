@@ -1,8 +1,8 @@
 import os
+
 import requests
-from django.utils import timezone
-from urllib3.exceptions import InsecureRequestWarning
 import urllib3
+from urllib3.exceptions import InsecureRequestWarning
 
 # Suppress the warning (As per your code)
 urllib3.disable_warnings(InsecureRequestWarning)

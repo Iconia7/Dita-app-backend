@@ -1,7 +1,9 @@
 import os
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from firebase_admin import messaging
+
 from .models import Achievement, Announcement, User, UserAchievement
 
 
@@ -140,7 +142,7 @@ def notify_achievement_unlock(sender, instance, created, **kwargs):
             },
         )
 
-        response = messaging.send(message)
+        messaging.send(message)
         print(f"✅ Achievement notification sent to {user.username}: {achievement.name}")
 
     except Exception as e:

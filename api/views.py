@@ -13,7 +13,7 @@ from django.db.models import Q
 
 # DRF Imports
 from api.permissions import IsOwnerOrReadOnly
-from dita_backend.utils import process_exam_excel
+from config.utils import process_exam_excel
 from rest_framework import viewsets, status, generics, permissions, filters
 from rest_framework.views import APIView
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
@@ -51,7 +51,7 @@ try:
                 cred_path = '/etc/secrets/serviceAccountKey.json'
             else:
                 # Local development path
-                cred_path = os.path.join(settings.BASE_DIR, 'dita_backend', 'serviceAccountKey.json')
+                cred_path = os.path.join(settings.BASE_DIR, 'config', 'serviceAccountKey.json')
                 
                 # Fallback: Check root folder
                 if not os.path.exists(cred_path):

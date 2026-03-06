@@ -4,22 +4,22 @@ from datetime import timedelta
 from firebase_admin import messaging
 from api.models import User
 
+
 class Command(BaseCommand):
-    help = 'Sends push notifications to members whose subscription expires in 7 days'
+    help = "Sends push notifications to members whose subscription expires in 7 days"
 
     def handle(self, *args, **kwargs):
         # 1. Calculate the target date (Today + 7 days)
         today = timezone.now().date()
         target_date = today + timedelta(days=7)
-        
+
         self.stdout.write(f"🔍 Checking for memberships expiring on: {target_date}")
 
         # 2. Find Users
         # We filter where the expiry DATE matches our target date
-        expiring_users = User.objects.filter(
-            membership_expiry__date=target_date,
-            fcm_token__isnull=False
-        ).exclude(fcm_token='')
+        expiring_users = User.objects.filter(membership_expiry__date=target_date, fcm_token__isnull=False).exclude(
+            fcm_token=""
+        )
 
         count = expiring_users.count()
         if count == 0:
@@ -38,10 +38,7 @@ class Command(BaseCommand):
                         body=f"Hi {user.username}, your DITA membership expires in 7 days. Renew now to keep access!",
                     ),
                     token=user.fcm_token,
-                    data={
-                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                        "type": "reminder"
-                    }
+                    data={"click_action": "FLUTTER_NOTIFICATION_CLICK", "type": "reminder"},
                 )
                 messaging.send(message)
                 success_count += 1

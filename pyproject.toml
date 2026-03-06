@@ -10,3 +10,7 @@ extend-exclude = '''
   | config/settings
 )/
 '''
+
+[tool.isort]
+profile = "black"
+skip = ["migrations", "venv", "config/settings", "manage.py"]

@@ -54,6 +54,7 @@ hyperframe==6.0.1
 hyperlink==21.0.0
 idna==3.11
 Incremental==24.11.0
+isort==8.0.1
 mccabe==0.7.0
 msgpack==1.1.1
 mypy_extensions==1.1.0

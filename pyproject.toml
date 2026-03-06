@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 120
+target-version = ["py313"]
+
+extend-exclude = '''
+/(
+    venv
+  | \.tox
+  | migrations
+  | config/settings
+)/
+'''
+
+[tool.isort]
+profile = "black"
+skip = ["migrations", "venv", "config/settings", "manage.py"]

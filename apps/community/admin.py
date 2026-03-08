@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CommunityComment, CommunityPost, LostItem, Story, StoryComment
+from .models import CommunityComment, CommunityPost, LostItem, Story
 
 
 @admin.register(CommunityPost)

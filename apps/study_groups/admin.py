@@ -8,6 +8,7 @@ class StudyGroupAdmin(admin.ModelAdmin):
     Custom admin interface for the StudyGroup model, displaying key fields in the list view with filters for course code and creation date, search capabilities for name, course code, creator's username, and description, and read-only fields for creation timestamp and member information.
     The member count and member list are displayed as read-only fields, providing administrators with insights into group membership
     """
+
     list_display = ("name", "course_code", "creator", "member_count", "created_at")
     list_filter = ("course_code", "created_at")
     search_fields = ("name", "course_code", "creator__username", "description")

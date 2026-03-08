@@ -13,6 +13,7 @@ from .serializers import ExamSerializer, ResourceSerializer, TaskSerializer
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for listing and retrieving exams, with support for filtering by course codes provided as query parameters."""
+
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
     permission_classes = [AllowAny]
@@ -32,6 +33,7 @@ class ExamViewSet(viewsets.ReadOnlyModelViewSet):
 
 class TaskViewSet(viewsets.ModelViewSet):
     """ViewSet for managing tasks, including listing, retrieving, creating, updating, and deleting tasks."""
+
     serializer_class = TaskSerializer
     permission_classes = [AllowAny]
 

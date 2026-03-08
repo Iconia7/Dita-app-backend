@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/events/", include("apps.events.urls")),
     path("api/payments/", include("apps.payments.urls")),
     path("api/community/", include("apps.community.urls")),
+    path("api/academics/", include("apps.academics.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # """from api.views import (

@@ -8,6 +8,7 @@ urlpatterns = [
     path("api/", include("apps.users.urls")),
     path("api/events/", include("apps.events.urls")),
     path("api/payments/", include("apps.payments.urls")),
+    path("api/community/", include("apps.community.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # """from api.views import (

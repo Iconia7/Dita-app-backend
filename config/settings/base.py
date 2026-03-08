@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.events",
     "apps.payments",
+    "apps.community",
 ]
 
 MIDDLEWARE = [

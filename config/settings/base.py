@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "channels",
     "drf_spectacular",
-    # "api",
     "apps.users",
     "apps.events",
     "apps.payments",

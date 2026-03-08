@@ -1,11 +1,12 @@
 import base64
 from io import BytesIO
 
-import qrcode
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Announcement, Event, RSVP
+import qrcode
+
+from .models import RSVP, Announcement, Event
 
 admin.site.register(RSVP)
 

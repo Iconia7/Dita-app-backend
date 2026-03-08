@@ -1,7 +1,7 @@
+from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .models import Achievement, User, UserAchievement
-from django.contrib import admin
 
 
 @admin.register(User)

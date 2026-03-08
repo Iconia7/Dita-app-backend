@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from .models import Announcement, Event, RSVP
+from .models import RSVP, Announcement, Event
 from .serializers import AnnouncementSerializer, EventSerializer
 
 

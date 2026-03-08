@@ -1,6 +1,7 @@
-from cloudinary.models import CloudinaryField
 from django.conf import settings
 from django.db import models
+
+from cloudinary.models import CloudinaryField
 
 
 class Story(models.Model):

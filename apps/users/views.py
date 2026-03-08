@@ -1,11 +1,12 @@
 from django.db.models import Q
+
+from firebase_admin import auth
 from rest_framework import generics, permissions, viewsets
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
-from firebase_admin import auth
 
 from .models import Achievement, User, UserAchievement
 from .serializers import (

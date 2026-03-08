@@ -1,7 +1,9 @@
 import os
-import firebase_admin
+
 from django.apps import AppConfig
 from django.conf import settings
+
+import firebase_admin
 from firebase_admin import credentials
 
 

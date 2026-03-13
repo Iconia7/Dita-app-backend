@@ -13,4 +13,16 @@ extend-exclude = '''
 
 [tool.isort]
 profile = "black"
-skip = ["migrations", "venv", "config/settings", "manage.py"]
+line_length = 120
+known_django = "django"
+known_first_party = ["apps", "config"]
+sections = [
+  "FUTURE",
+  "STDLIB",
+  "DJANGO",
+  "THIRDPARTY",
+  "FIRSTPARTY",
+  "LOCALFOLDER",
+]
+skip = ["venv", ".tox"]
+skip_glob = ["*/migrations/*", "config/settings/*", "manage.py"]

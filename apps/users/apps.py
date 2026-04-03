@@ -15,7 +15,7 @@ class UsersConfig(AppConfig):
     def ready(self):
         if not firebase_admin._apps:
             try:
-                cred_path = getattr(settings, "GOOGLE_CREDENTIALS_PATH", None)
+                cred_path = getattr(settings, "FIREBASE_SERVICE_ACCOUNT_PATH", None)
                 if cred_path and os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)

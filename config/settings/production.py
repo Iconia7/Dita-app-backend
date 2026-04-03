@@ -26,7 +26,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # Static files (WhiteNoise)
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Using a more robust storage that handles missing manifest entries gracefully
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Logging configuration
 LOGGING = {
@@ -51,5 +52,5 @@ LOGGING = {
     },
 }
 
-# Google credentials
-GOOGLE_CREDENTIALS_PATH = '/etc/secrets/serviceAccountKey.json'
+# Firebase credentials
+FIREBASE_SERVICE_ACCOUNT_PATH = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH", os.path.join(BASE_DIR, "config", "serviceAccountKey.json"))

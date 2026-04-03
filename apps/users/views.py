@@ -1,3 +1,4 @@
+import os
 from django.db.models import Q
 
 from firebase_admin import auth
@@ -196,3 +197,27 @@ class UserAchievementViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Override the get_queryset method to return only the achievements earned by the authenticated user."""
         return UserAchievement.objects.filter(user=self.request.user)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def verify_voter(request):
+    """
+    Internal API view to verify if a user is an active member based on their email.
+    Uses an internal key for security.
+    """
+    internal_key = os.environ.get("INTERNAL_API_KEY", "DITA_Secur3_Internal_Bridge_2024")
+    if request.headers.get("X-Internal-Key") != internal_key:
+        return Response({"error": "Forbidden"}, status=403)
+
+    email = request.query_params.get("email")
+    user = User.objects.filter(email=email).first()
+
+    if not user:
+        return Response({"is_member": False, "reason": "not_found"})
+
+    return Response({
+        "is_member": user.is_active_member,
+        "reason": "active" if user.is_active_member else "expired",
+        "username": user.username
+    })

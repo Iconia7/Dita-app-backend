@@ -114,3 +114,17 @@ class LostItem(models.Model):
 
     def __str__(self):
         return f"{self.category}: {self.item_name}"
+
+
+class Promotion(models.Model):
+    """Model representing a promotion, allowing the club to highlight specific services, events, or partners to users."""
+
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    image = models.ImageField(upload_to="promotions/", blank=True, null=True)
+    link = models.URLField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title

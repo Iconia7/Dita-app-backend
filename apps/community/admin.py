@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CommunityComment, CommunityPost, LostItem, Story
+from .models import CommunityComment, CommunityPost, LostItem, Promotion, Story
 
 
 @admin.register(CommunityPost)
@@ -126,3 +126,13 @@ class StoryAdmin(admin.ModelAdmin):
 
     is_expired.boolean = True
     is_expired.short_description = "Expired?"
+
+
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    """Custom admin interface for the Promotion model, allowing administrators to manage promotions with fields for title, description, image, link, and active status."""
+
+    list_display = ("title", "link", "is_active", "created_at")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("title", "description", "link")
+    readonly_fields = ("created_at",)

@@ -7,5 +7,6 @@ router.register(r"stories", views.StoryViewSet)
 router.register(r"story-comments", views.StoryCommentViewSet)
 router.register(r"community-posts", views.CommunityPostViewSet)
 router.register(r"community-comments", views.CommunityCommentViewSet)
+router.register(r"promotions", views.PromotionViewSet, basename="promotions")
 
 urlpatterns = router.urls

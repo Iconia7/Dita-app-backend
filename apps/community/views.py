@@ -10,10 +10,11 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.permissions import IsOwnerOrReadOnly
 
-from .models import CommunityComment, CommunityPost, Story, StoryComment
+from .models import CommunityComment, CommunityPost, Promotion, Story, StoryComment
 from .serializers import (
     CommunityCommentSerializer,
     CommunityPostSerializer,
+    PromotionSerializer,
     StoryCommentSerializer,
     StorySerializer,
     StoryViewerSerializer,
@@ -217,3 +218,11 @@ class CommunityCommentViewSet(viewsets.ModelViewSet):
         if post_id:
             return self.queryset.filter(post_id=post_id).order_by("created_at")
         return self.queryset
+
+
+class PromotionViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for retrieving active promotions, allowing any user to view them."""
+
+    queryset = Promotion.objects.filter(is_active=True).order_by("-created_at")
+    serializer_class = PromotionSerializer
+    permission_classes = [AllowAny]

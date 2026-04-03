@@ -2,14 +2,19 @@ from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 
 from apps.users.models import User
 from config.utils import process_exam_excel
-
-from .models import Exam, Resource, Task
-from .serializers import ExamSerializer, ResourceSerializer, TaskSerializer
+from .models import AppConfig, AppUpdate, Exam, Resource, Task
+from .serializers import (
+    AppConfigSerializer, AppUpdateSerializer, ExamSerializer,
+    ResourceSerializer, TaskSerializer
+)
+from .utils import scrape_portal
 
 
 class ExamViewSet(viewsets.ReadOnlyModelViewSet):
@@ -113,3 +118,53 @@ def public_exam_search(request):
         if db_query:
             exams = Exam.objects.filter(db_query).order_by("date")
     return render(request, "exam_search.html", {"exams": exams})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def check_update(request):
+    """API view to check for the latest application update."""
+    latest_update = AppUpdate.objects.first()
+    if latest_update:
+        download_url = request.build_absolute_uri(latest_update.apk_file.url) if not latest_update.apk_file.url.startswith("http") else latest_update.apk_file.url
+        return Response({
+            "version_code": latest_update.version_code,
+            "download_url": download_url,
+            "release_notes": latest_update.release_notes,
+            "is_mandatory": latest_update.is_mandatory
+        })
+    return Response({"error": "No updates found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def system_status(request):
+    """API view to retrieve the general application configuration settings."""
+    config, _ = AppConfig.objects.get_or_create(id=1)
+    return Response(AppConfigSerializer(config).data)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def portal_sync_exams(request):
+    """API view to sync exams with the university portal for a specific user."""
+    import json
+    data = json.loads(request.body) if request.body else request.data
+    adm, pwd = data.get('admission_number'), data.get('password')
+
+    if not adm or not pwd:
+        return Response({"error": "Required fields missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+    codes = scrape_portal(adm, pwd)
+    if isinstance(codes, dict) and "error" in codes:
+        return Response(codes, status=status.HTTP_400_BAD_REQUEST)
+
+    unit_codes = [c.strip().upper().replace(' ', '') for c in codes]
+    matched_exams = Exam.objects.filter(course_code__in=unit_codes)
+    serializer = ExamSerializer(matched_exams, many=True)
+
+    return Response({
+        "count": len(matched_exams),
+        "codes_found": list(set(unit_codes)),
+        "exams": serializer.data
+    })

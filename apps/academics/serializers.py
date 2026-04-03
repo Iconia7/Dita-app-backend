@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Exam, Resource, Task
+from .models import AppConfig, AppUpdate, Exam, Resource, Task
 
 
 class ExamSerializer(serializers.ModelSerializer):
@@ -30,3 +30,19 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = ["id", "title", "resource_type", "link", "file", "description"]
+
+
+class AppConfigSerializer(serializers.ModelSerializer):
+    """Serializer for the AppConfig model, including all fields."""
+
+    class Meta:
+        model = AppConfig
+        fields = "__all__"
+
+
+class AppUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for the AppUpdate model, including all fields."""
+
+    class Meta:
+        model = AppUpdate
+        fields = "__all__"

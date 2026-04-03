@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import CommunityComment, CommunityPost, LostItem, Story, StoryComment
+from .models import CommunityComment, CommunityPost, LostItem, Promotion, Story, StoryComment
 
 
 class StorySerializer(serializers.ModelSerializer):
@@ -213,3 +213,11 @@ class LostItemSerializer(serializers.ModelSerializer):
         if request and request.user:
             return obj.user == request.user
         return False
+
+
+class PromotionSerializer(serializers.ModelSerializer):
+    """Serializer for the Promotion model, including all fields."""
+
+    class Meta:
+        model = Promotion
+        fields = "__all__"

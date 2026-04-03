@@ -53,3 +53,30 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class AppUpdate(models.Model):
+    """Model representing an update for the application, including version code, release notes, APK file, and mandatory status."""
+
+    version_code = models.IntegerField(unique=True)
+    release_notes = models.TextField()
+    apk_file = models.FileField(upload_to="updates/")
+    is_mandatory = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-version_code"]
+
+    def __str__(self):
+        return f"Version {self.version_code}"
+
+
+class AppConfig(models.Model):
+    """Model representing application configuration settings, such as system message and maintenance status."""
+
+    system_message = models.TextField(blank=True, null=True)
+    is_under_maintenance = models.BooleanField(default=False)
+    min_version_required = models.IntegerField(default=1)
+
+    def __str__(self):
+        return "App Configuration"

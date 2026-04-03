@@ -6,7 +6,10 @@ from .models import Achievement, User, UserAchievement
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    """Custom admin interface for the User model, displaying additional fields and allowing filtering by membership status and program."""
+    """
+    Custom admin interface for the User model, extending the default UserAdmin to include student-specific fields such as admission number, program, year of study, phone number, membership expiry, points, and FCM token.
+    The list display and filter options are also customized to provide a better overview of student information in the Django admin panel.
+    """
 
     list_display = (
         "username",
@@ -18,6 +21,7 @@ class CustomUserAdmin(UserAdmin):
         "fcm_token",
     )
     list_filter = ("membership_expiry", "program", "year_of_study", "is_staff")
+
     fieldsets = UserAdmin.fieldsets + (
         (
             "Student Details",

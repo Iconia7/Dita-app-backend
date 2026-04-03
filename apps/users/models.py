@@ -26,7 +26,18 @@ class User(AbstractUser):
     @property
     def attendance_percentage(self):
         """Calculate the attendance percentage based on attended events and total events."""
-        pass  # Placeholder for actual implementation
+        from apps.events.models import Event
+
+        total_events = Event.objects.count()
+
+        if total_events == 0:
+            return 0
+
+        # 'attended_events' is the related_name we set in the Event model
+        attended_count = self.attended_events.count()
+
+        # Calculate Percentage
+        return int((attended_count / total_events) * 100)
 
     @property
     def is_active_member(self):

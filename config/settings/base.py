@@ -167,16 +167,14 @@ CORS_ALLOW_HEADERS = [
 
 ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "api.dita.co.ke,62.169.16.219,localhost,127.0.0.1,10.5.50.78")
 if "," in ALLOWED_HOSTS_ENV:
-    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
+    ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS_ENV.split(",")]
 else:
     ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split()
-ALLOWED_HOSTS = [
-    "api.dita.co.ke",
-    "62.169.16.219",
-    "localhost",
-    "127.0.0.1",
-    "10.5.50.78",
-]
+
+# Root Backend Configuration
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://api.dita.co.ke")
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
+MPESA_CALLBACK_SECRET = os.environ.get("MPESA_CALLBACK_SECRET")
 
 CSRF_TRUSTED_ORIGINS = [
     "https://api.dita.co.ke",

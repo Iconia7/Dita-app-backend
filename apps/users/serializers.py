@@ -33,6 +33,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["admission_number"] = self.user.admission_number
         data["points"] = self.user.points
         data["phone_number"] = getattr(self.user, "phone_number", "")
+        data["is_paid_member"] = self.user.is_active_member
+        if self.user.membership_expiry:
+            data["membership_expiry"] = self.user.membership_expiry.strftime("%Y-%m-%d")
         if self.user.avatar:
             data["avatar"] = self.user.avatar.url
         return data

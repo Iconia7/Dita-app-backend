@@ -2,7 +2,7 @@ from .base import *
 
 DEBUG = False
 
-ALLOWED_HOSTS += ['.onrender.com']
+ALLOWED_HOSTS += ['.dita.co.ke'] # Strictly allow only the main domain and its subdomains
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:

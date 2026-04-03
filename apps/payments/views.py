@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import timedelta
 
+import hmac
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -34,11 +35,11 @@ class InitiatePaymentView(APIView):
     APIView for initiating an M-Pesa STK push.
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         phone_number = request.data.get("phone")
-        user_id = request.data.get("user_id")
+        user_id = request.user.id  # Force the user ID to be the authenticated user
         amount = 200
 
         if phone_number and phone_number.startswith("0"):
@@ -86,7 +87,8 @@ class MpesaCallbackView(APIView):
         # Validate Secret Token
         token = request.query_params.get("token")
         expected_token = os.getenv("MPESA_CALLBACK_SECRET")
-        if not token or token != expected_token:
+        
+        if not expected_token or not token or not hmac.compare_digest(token, expected_token):
             logger.error(f"UNAUTHORIZED: Callback attempt with invalid token: {token}")
             return Response({"ResultCode": 1, "ResultDesc": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 

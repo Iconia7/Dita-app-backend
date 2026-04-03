@@ -1,4 +1,5 @@
 import os
+import hmac
 from django.db.models import Q
 
 from firebase_admin import auth
@@ -42,7 +43,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         """Override the get_queryset method to allow filtering users by username or admission number using query parameters."""
@@ -94,6 +95,9 @@ class UserViewSet(viewsets.ModelViewSet):
             user.ram_levels_completed = max(user.ram_levels_completed, levels)
             user.ram_games_played += 1
 
+        # Prevent absurd point injections (Cheat Prevention)
+        points_earned = min(max(0, int(points_earned)), 200) 
+        
         user.points += points_earned
         user.save()
 
@@ -206,8 +210,10 @@ def verify_voter(request):
     Internal API view to verify if a user is an active member based on their email.
     Uses an internal key for security.
     """
-    internal_key = os.environ.get("INTERNAL_API_KEY", "DITA_Secur3_Internal_Bridge_2024")
-    if request.headers.get("X-Internal-Key") != internal_key:
+    internal_key = os.environ.get("INTERNAL_API_KEY")
+    client_key = request.headers.get("X-Internal-Key")
+    
+    if not internal_key or not client_key or not hmac.compare_digest(client_key, internal_key):
         return Response({"error": "Forbidden"}, status=403)
 
     email = request.query_params.get("email")

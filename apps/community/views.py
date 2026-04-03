@@ -225,4 +225,5 @@ class PromotionViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Promotion.objects.filter(is_active=True).order_by("-created_at")
     serializer_class = PromotionSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]

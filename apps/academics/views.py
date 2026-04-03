@@ -22,6 +22,7 @@ class ExamViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def get_queryset(self):

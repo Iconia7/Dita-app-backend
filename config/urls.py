@@ -22,6 +22,7 @@ from apps.users.views import (
     reset_password_phone,
     get_leaderboard,
     verify_voter,
+    MyTokenObtainPairView
 )
 from apps.payments.views import InitiatePaymentView, MpesaCallbackView
 from apps.study_groups.views import group_landing_page
@@ -50,6 +51,7 @@ urlpatterns = [
     path("api/check-update/", check_update, name="check_update_legacy"),
     path("api/system-status/", system_status, name="system_status_legacy"),
     path("api/portal-sync/", portal_sync_exams, name="portal_sync_legacy"),
+    path("api/login/", MyTokenObtainPairView.as_view(), name="token_obtain_pair_legacy"),
     
     # --- Specialized Web & HTML Routes ---
     path("upload-timetable/", upload_timetable, name="upload_timetable"),

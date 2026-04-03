@@ -2,7 +2,9 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS += ['*']
+ALLOWED_HOSTS += ['*', '10.5.49.20']
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS += ['http://10.5.49.20:8000', 'http://localhost:8000', 'http://127.0.0.1:8000']
 
 # SQLite by default, Postgres if DATABASE_URL is set
 DATABASES = {

@@ -165,6 +165,11 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
+ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "api.dita.co.ke,62.169.16.219,localhost,127.0.0.1,10.5.50.78")
+if "," in ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
+else:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split()
 ALLOWED_HOSTS = [
     "api.dita.co.ke",
     "62.169.16.219",

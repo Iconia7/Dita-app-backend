@@ -226,6 +226,67 @@
             .search-card { padding: 25px 20px; }
             .btn-search { padding: 16px; }
         }
+
+        /* --- 4. PORTAL SYNC UI --- */
+        .sync-wrapper { margin-top: 15px; text-align: center; }
+        .btn-sync {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-sync:hover { background: var(--primary); color: white; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(4px);
+        }
+        .modal-card {
+            background: white; width: 90%; max-width: 400px;
+            padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            position: relative; animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .modal-header { text-align: center; margin-bottom: 25px; }
+        .modal-header h2 { margin: 0; color: var(--primary); font-size: 22px; }
+        .modal-header p { margin: 5px 0 0; color: var(--text-sub); font-size: 13px; }
+
+        .modal-field { margin-bottom: 20px; }
+        .modal-field label { display: block; font-weight: 700; font-size: 12px; color: var(--text-sub); margin-bottom: 8px; text-transform: uppercase; }
+        .modal-field input { 
+            width: 100%; padding: 14px; border: 2px solid #F1F5F9; border-radius: 12px; 
+            font-size: 15px; outline: none; box-sizing: border-box; background: #F8FAFC;
+        }
+        .modal-field input:focus { border-color: var(--primary); background: white; }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 30px; }
+        .btn-modal { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-cancel { background: #F1F5F9; color: var(--text-sub); }
+        .btn-confirm { background: var(--primary); color: white; }
+        .btn-modal:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Spinner */
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(0, 51, 102, 0.1); border-top: 4px solid var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #sync-status { text-align: center; font-size: 14px; margin-top: 15px; display: none; }
+        #sync-status.error { color: var(--danger); font-weight: 600; }
+        #sync-status.success { color: #10B981; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -239,13 +300,56 @@
     <div class="container">
         <div class="search-card">
             <label>Find Your Schedule</label>
-            <form method="GET">
+            <form id="search-form" method="GET">
                 <div class="input-wrapper">
                     <span class="input-icon">🔍</span>
-                    <input type="text" name="codes" placeholder="Enter Unit Codes (e.g. ACS401, INS411)" value="{{ request.GET.codes|default:'' }}" autofocus>
+                    <input type="text" name="codes" id="search-input" placeholder="Enter Unit Codes (e.g. ACS401, INS411)" value="{{ request.GET.codes|default:'' }}" autofocus>
                 </div>
                 <button type="submit" class="btn-search">Search Timetable</button>
             </form>
+            
+            <div class="sync-wrapper">
+                <button type="button" class="btn-sync" onclick="openSyncModal()">
+                    <span>🎓</span> Sync From Portal
+                </button>
+            </div>
+        </div>
+
+        <!-- Portal Sync Modal -->
+        <div id="sync-modal" class="modal-overlay">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2>Portal Sync</h2>
+                    <p>Enter your student portal credentials to fetch exams automatically.</p>
+                </div>
+                
+                <div id="sync-form-content">
+                    <div class="modal-field">
+                        <label>Admission Number</label>
+                        <input type="text" id="portal-user" placeholder="e.g. 22-0001">
+                    </div>
+                    <div class="modal-field">
+                        <label>Portal Password</label>
+                        <input type="password" id="portal-pass" placeholder="••••••••">
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn-modal btn-cancel" onclick="closeSyncModal()">Cancel</button>
+                        <button type="button" id="btn-do-sync" class="btn-modal btn-confirm" onclick="initiateSync()">Start Sync</button>
+                    </div>
+                    <p style="font-size: 10px; color: var(--text-sub); text-align: center; margin-top: 15px;">
+                        Note: We do not store your password. It is only used to fetch your timetable.
+                    </p>
+                </div>
+
+                <div id="sync-loading-content" style="display: none; text-align: center; padding: 20px 0;">
+                    <div class="spinner"></div>
+                    <p id="sync-progress-text" style="font-weight: 600; color: var(--primary);">Logging into portal...</p>
+                    <p style="font-size: 12px; color: var(--text-sub);">This may take up to 20 seconds.</p>
+                </div>
+
+                <div id="sync-status"></div>
+            </div>
         </div>
 
         <div class="results-area">
@@ -257,12 +361,13 @@
                         <span class="code-pill">{{ exam.course_code }}</span>
                         <h3 class="exam-title">{{ exam.title }}</h3>
                         <div class="venue-row">
-                            <span class="venue-icon">📍</span> {{ exam.venue }}
+                            <span class="venue-icon">📍</span> <strong>{{ exam.venue }}</strong>
                         </div>
                     </div>
                     <div class="date-box">
-                        <div class="db-month">{{ exam.date|date:"M" }}</div>
+                        <div class="db-month" style="color: var(--danger); font-size: 10px;">{{ exam.date|date:"l"|upper }}</div>
                         <div class="db-day">{{ exam.date|date:"d" }}</div>
+                        <div class="db-month">{{ exam.date|date:"M" }}</div>
                         <div class="db-time">{{ exam.date|time:"H:i" }}</div>
                     </div>
                 </div>
@@ -290,5 +395,129 @@
         <p>Get the full experience on Android. <a href="#">Download App</a></p>
     </div>
 
+    <script>
+        const modal = document.getElementById('sync-modal');
+        const formContent = document.getElementById('sync-form-content');
+        const loadingContent = document.getElementById('sync-loading-content');
+        const statusEl = document.getElementById('sync-status');
+        const syncBtn = document.getElementById('btn-do-sync');
+
+        function openSyncModal() {
+            modal.style.display = 'flex';
+            statusEl.style.display = 'none';
+            formContent.style.display = 'block';
+            loadingContent.style.display = 'none';
+        }
+
+        function closeSyncModal() {
+            if (syncBtn.disabled) return; // Prevent close during active sync
+            modal.style.display = 'none';
+        }
+
+        async function initiateSync() {
+            const user = document.getElementById('portal-user').value;
+            const pass = document.getElementById('portal-pass').value;
+
+            if (!user || !pass) {
+                showStatus("Please enter both admission number and password", "error");
+                return;
+            }
+
+            // UI Tracking
+            syncBtn.disabled = true;
+            formContent.style.display = 'none';
+            loadingContent.style.display = 'block';
+            statusEl.style.display = 'none';
+
+            try {
+                // 60-second timeout for the scraper
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                const response = await fetch('/api/portal-sync/', {
+                    method: 'POST',
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        admission_number: user,
+                        password: pass
+                    }),
+                });
+
+                clearTimeout(timeoutId);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus(`Successfully found ${data.count} exams for your ${data.codes_found.length} units!`, "success");
+                    
+                    // Redirect to results after 1.5s
+                    if (data.codes_found && data.codes_found.length > 0) {
+                        setTimeout(() => {
+                            window.location.href = `?codes=${data.codes_found.join(',')}`;
+                        }, 1500);
+                    } else {
+                        setTimeout(() => {
+                            loadingContent.style.display = 'none';
+                            formContent.style.display = 'block';
+                            syncBtn.disabled = false;
+                        }, 2000);
+                    }
+                } else {
+                    showStatus(data.error || "Portal sync failed. Please check your credentials.", "error");
+                    syncBtn.disabled = false;
+                    loadingContent.style.display = 'none';
+                    formContent.style.display = 'block';
+                }
+
+            } catch (err) {
+                console.error("DEBUG SYNC ERROR:", err);
+                
+                // Show the ACTUAL technical error to find the root cause
+                let errorMsg = `Sync failed (${err.name}): ${err.message}`;
+                
+                if (err.name === 'AbortError') {
+                    errorMsg = "Sync timed out (60s). The portal is too slow or the connection was dropped.";
+                } else if (err.message === 'Failed to fetch') {
+                    errorMsg = "Connection Blocked: The browser (Brave/Chrome) refused the request. Try turning OFF shields/ad-blockers.";
+                }
+                
+                showStatus(errorMsg, "error");
+                syncBtn.disabled = false;
+                
+                setTimeout(() => {
+                    loadingContent.style.display = 'none';
+                    formContent.style.display = 'block';
+                }, 8000); // Wait longer to read the error
+            }
+        }
+
+        function showStatus(msg, type) {
+            statusEl.innerText = msg;
+            statusEl.className = type;
+            statusEl.style.display = 'block';
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Close modal on outside click
+        window.onclick = function(event) {
+            if (event.target == modal) closeSyncModal();
+        }
+    </script>
 </body>
 </html>

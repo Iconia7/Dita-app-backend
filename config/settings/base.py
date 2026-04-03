@@ -150,13 +150,11 @@ CORS_ALLOW_HEADERS = [
     'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
 ]
 
-ALLOWED_HOSTS = [
-    'api.dita.co.ke',
-    '62.169.16.219',
-    'localhost',
-    '127.0.0.1',
-    '10.5.50.78',
-]
+ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS", "api.dita.co.ke,62.169.16.219,localhost,127.0.0.1,10.5.50.78")
+if "," in ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
+else:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split()
 
 CSRF_TRUSTED_ORIGINS = [
     'https://api.dita.co.ke',

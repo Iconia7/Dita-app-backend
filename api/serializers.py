@@ -213,9 +213,18 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class ExamSerializer(serializers.ModelSerializer):
+    day_name = serializers.SerializerMethodField()
+    formatted_date = serializers.SerializerMethodField()
+
     class Meta:
         model = Exam
         fields = "__all__"
+
+    def get_day_name(self, obj):
+        return obj.date.strftime("%A")
+
+    def get_formatted_date(self, obj):
+        return obj.date.strftime("%d %b %Y")
 
 
 class RegisterSerializer(serializers.ModelSerializer):

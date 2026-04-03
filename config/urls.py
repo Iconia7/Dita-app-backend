@@ -10,7 +10,7 @@ from api.views import (
     EventViewSet,
     InitiatePaymentView,
     MyTokenObtainPairView,
-    PayHeroCallbackView,
+    MpesaCallbackView,
     PaymentViewSet,
     RegisterView,
     ResourceViewSet,
@@ -41,7 +41,7 @@ urlpatterns = [
     # Custom Endpoints
     path("api/register/", RegisterView.as_view(), name="register"),
     path("api/pay/", InitiatePaymentView.as_view(), name="pay"),
-    path("api/mpesa/callback/", PayHeroCallbackView.as_view(), name="callback"),
+    path("api/mpesa/callback/", MpesaCallbackView.as_view(), name="callback"),
     path("api/updates/latest/", views.check_update, name="check_update"),
     path("api/change-password/", views.change_password, name="change_password"),
     path("upload-timetable/", views.upload_timetable, name="upload_timetable"),
@@ -51,5 +51,7 @@ urlpatterns = [
     path("api/leaderboard/", views.get_leaderboard, name="leaderboard"),
     path("api/auth/reset-password-phone/", views.reset_password_phone, name="reset-password-phone"),
     path("group/<int:group_id>/", views.group_landing_page, name="group-landing"),
+    path("api/verify-voter/", views.verify_voter, name="verify_voter"),
+    path("api/portal-sync/", views.portal_sync_exams, name="portal_sync_exams"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 # ^^^ FIXED: changed 'stat' to 'static'

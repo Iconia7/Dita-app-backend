@@ -25,9 +25,8 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Static files (WhiteNoise)
-# Using a more robust storage that handles missing manifest entries gracefully
-STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+# Static files (Using standard storage to avoid collection crashes)
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Logging configuration
 LOGGING = {

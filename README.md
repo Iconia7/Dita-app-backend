@@ -101,13 +101,35 @@ python manage.py runserver
 
 ---
 
+## API Documentation
+
+Interactive API docs are available via Swagger UI once the server is running.
+
+| URL                                 | Description                                |
+| ----------------------------------- | ------------------------------------------ |
+| `http://localhost:8000/api/docs/`   | Swagger UI — browse and test all endpoints |
+| `http://localhost:8000/api/redoc/`  | ReDoc — clean readable API reference       |
+| `http://localhost:8000/api/schema/` | Raw OpenAPI schema (JSON)                  |
+
+Swagger UI lets you authenticate with a JWT token and test endpoints directly from the browser without needing Postman.
+
+---
+
 ## Firebase Setup
 
-Docs coming soon
+Place your `serviceAccountKey.json` in:
+
+```
+config/serviceAccountKey.json
+```
+
+On Render (production), upload it as a Secret File at `/etc/secrets/serviceAccountKey.json`.
 
 ---
 
 ## Code Quality
+
+### Formatting and Linting
 
 ```bash
 # Format code
@@ -118,16 +140,84 @@ isort .
 
 # Lint
 flake8 .
+```
 
-# Run all checks via tox
+### Running all checks with tox
+
+```bash
 tox
+```
+
+Tox runs flake8 in an isolated environment. Configuration is in `tox.ini`. To see verbose output:
+
+```bash
+tox -v
+```
+
+### Config files
+
+| Tool   | Config location                       |
+| ------ | ------------------------------------- |
+| black  | `pyproject.toml` under `[tool.black]` |
+| isort  | `pyproject.toml` under `[tool.isort]` |
+| flake8 | `.flake8`                             |
+| tox    | `tox.ini`                             |
+
+---
+
+## Settings
+
+Settings are split by environment under `config/settings/`:
+
+| File             | Used when                      |
+| ---------------- | ------------------------------ |
+| `base.py`        | Shared across all environments |
+| `development.py` | Local development (default)    |
+| `production.py`  | Render deployment              |
+
+To switch environments, set the `DJANGO_SETTINGS_MODULE` env var:
+
+```bash
+# development (default via manage.py)
+DJANGO_SETTINGS_MODULE=config.settings.development
+
+# production
+DJANGO_SETTINGS_MODULE=config.settings.production
+```
+
+Key differences between environments:
+
+- **Development** — uses local file storage for media, SQLite by default, SSL off
+- **Production** — uses Cloudinary for media, SSL enforced, full security headers enabled
+
+---
+
+## Requirements
+
+Dependencies are split by environment under `requirements/`:
+
+```bash
+pip install -r requirements/local.txt   # development
+pip install -r requirements/prod.txt    # production
+pip install -r requirements/testing.txt # testing
 ```
 
 ---
 
 ## Deployment
 
-Docs coming soon
+Set the following environment variables on the deployment platform (e.g. Render):
+
+```
+DJANGO_SETTINGS_MODULE=config.settings.production
+DJANGO_SECRET_KEY=
+DATABASE_URL=
+REDIS_URL=
+```
+
+Upload `serviceAccountKey.json` as a Secret File at path `/etc/secrets/serviceAccountKey.json`.
+
+---
 
 ## Management Commands
 

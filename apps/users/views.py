@@ -207,7 +207,7 @@ class UserAchievementViewSet(viewsets.ReadOnlyModelViewSet):
 @permission_classes([AllowAny])
 def verify_voter(request):
     """
-    Internal API view to verify if a user is an active member based on their email.
+    Internal API view to verify if a student is a user of the DITA App by admission number.
     Uses an internal key for security.
     """
     internal_key = os.environ.get("INTERNAL_API_KEY")
@@ -216,14 +216,18 @@ def verify_voter(request):
     if not internal_key or not client_key or not hmac.compare_digest(client_key, internal_key):
         return Response({"error": "Forbidden"}, status=403)
 
-    email = request.query_params.get("email")
-    user = User.objects.filter(email=email).first()
+    admission_number = request.query_params.get("admission_number")
+    if not admission_number:
+        return Response({"error": "Admission number is required"}, status=400)
+
+    # We check if the user exists in the app database
+    user = User.objects.filter(admission_number__iexact=admission_number).first()
 
     if not user:
-        return Response({"is_member": False, "reason": "not_found"})
+        return Response({"is_user": False, "reason": "not_found"})
 
     return Response({
-        "is_member": user.is_active_member,
-        "reason": "active" if user.is_active_member else "expired",
-        "username": user.username
+        "is_user": True,
+        "username": user.username,
+        "admission_number": user.admission_number
     })

@@ -7,8 +7,7 @@
       "namespace": "android_app",
       "package_name": "com.dita.mobile",
       "sha256_cert_fingerprints": [
-        "40:D7:44:BB:85:70:42:02:B2:84:E8:F6:47:D9:12:05:DA:0D:FB:F1:45:F4:8C:18:7E:DA:3C:BC:D9:17:4C:71",
-        "62:08:50:20:8F:16:1E:D2:1A:D6:34:46:AD:7A:AC:4B:71:08:10:DE:87:63:5A:C2:F8:EB:70:B1:3A:B7:54:AE"
+        "40:D7:44:BB:85:70:42:02:B2:84:E8:F6:47:D9:12:05:DA:0D:FB:F1:45:F4:8C:18:7E:DA:3C:BC:D9:17:4C:71"
       ]
     }
   }

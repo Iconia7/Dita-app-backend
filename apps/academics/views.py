@@ -169,3 +169,26 @@ def portal_sync_exams(request):
         "codes_found": list(set(unit_codes)),
         "exams": serializer.data
     })
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def well_known_assetlinks(request):
+    """
+    API view to serve the Digital Asset Links JSON file for Android App Links verification.
+    """
+    assetlinks_data = [
+        {
+            "relation": [
+                "delegate_permission/common.handle_all_urls"
+            ],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.dita.mobile",
+                "sha256_cert_fingerprints": [
+                    "40:D7:44:BB:85:70:42:02:B2:84:E8:F6:47:D9:12:05:DA:0D:FB:F1:45:F4:8C:18:7E:DA:3C:BC:D9:17:4C:71"
+                ]
+            }
+        }
+    ]
+    return Response(assetlinks_data)

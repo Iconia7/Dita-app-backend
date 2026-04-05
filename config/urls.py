@@ -14,7 +14,8 @@ from apps.academics.views import (
     public_exam_search, 
     check_update, 
     system_status, 
-    portal_sync_exams
+    portal_sync_exams,
+    well_known_assetlinks
 )
 from apps.users.views import (
     RegisterView,
@@ -28,6 +29,7 @@ from apps.payments.views import InitiatePaymentView, MpesaCallbackView
 from apps.study_groups.views import group_landing_page
 
 urlpatterns = [
+    path(".well-known/assetlinks.json", well_known_assetlinks, name="assetlinks"),
     path("admin/", admin.site.urls),
     
     # --- Consolidated API (v1) ---

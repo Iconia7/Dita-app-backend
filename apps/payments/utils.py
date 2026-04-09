@@ -45,7 +45,7 @@ def initiate_stk_push(phone_number, amount, external_reference):
     mpesa_secret = os.getenv("MPESA_CALLBACK_SECRET")
     backend_url = os.getenv("BACKEND_URL")
     # Unified Callback URL
-    callback_url = f"{backend_url}/api/payments/mpesa/callback/?token={mpesa_secret}"
+    callback_url = f"{backend_url}/api/mpesa/callback/?token={mpesa_secret}"
 
     # Safaricom Timestamp format: YYYYMMDDHHMMSS
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

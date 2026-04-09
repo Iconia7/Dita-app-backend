@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 
 router = DefaultRouter()
-router.register(r"profiles", views.UserViewSet)
+router.register(r"users", views.UserViewSet, basename="user")
 router.register(r"achievements", views.AchievementViewSet)
 router.register(r"user-achievements", views.UserAchievementViewSet, basename="user-achievements")
 

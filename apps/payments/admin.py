@@ -10,6 +10,6 @@ class PaymentAdmin(admin.ModelAdmin):
     The list display includes key payment details, with filters for status and timestamp, and search functionality for student username, phone number, M-Pesa receipt, and external reference.
     """
 
-    list_display = ("student", "amount", "phone_number", "status", "timestamp", "mpesa_receipt")
+    list_display = ("student", "amount", "phone_number", "checkout_request_id", "status", "timestamp", "mpesa_receipt")
     list_filter = ("status", "timestamp")
-    search_fields = ("student__username", "phone_number", "mpesa_receipt", "external_reference")
+    search_fields = ("student__username", "phone_number", "mpesa_receipt", "external_reference", "checkout_request_id")

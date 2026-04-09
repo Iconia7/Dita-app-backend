@@ -19,6 +19,8 @@ class Payment(models.Model):
     phone_number = models.CharField(max_length=15)
     mpesa_receipt = models.CharField(max_length=50, null=True, blank=True, unique=True)
     external_reference = models.CharField(max_length=100, unique=True)
+    checkout_request_id = models.CharField(max_length=100, null=True, blank=True, unique=True)
+    merchant_request_id = models.CharField(max_length=100, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     timestamp = models.DateTimeField(auto_now_add=True)
 

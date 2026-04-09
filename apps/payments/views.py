@@ -58,7 +58,7 @@ class InitiatePaymentView(APIView):
         external_reference = f"dita-pay-{student_user.id}-{int(timezone.now().timestamp())}"
 
         try:
-            Payment.objects.create(
+            payment = Payment.objects.create(
                 student=student_user,
                 phone_number=phone_number,
                 amount=amount,
@@ -72,6 +72,11 @@ class InitiatePaymentView(APIView):
         response = initiate_stk_push(phone_number, amount, external_reference)
         if not response:
             return Response({"error": "Failed to initiate M-Pesa STK push."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Store Safaricom IDs for reliable callback matching
+        payment.checkout_request_id = response.get("CheckoutRequestID")
+        payment.merchant_request_id = response.get("MerchantRequestID")
+        payment.save()
 
         return Response({"message": "STK push sent. Enter PIN."}, status=status.HTTP_200_OK)
 
@@ -103,8 +108,18 @@ class MpesaCallbackView(APIView):
             if item.get("Name") == "PhoneNumber":
                 phone = item.get("Value")
 
+        checkout_request_id = data.get("CheckoutRequestID")
+
         if code == 0:
-            payment = Payment.objects.filter(phone_number__contains=str(phone), status="pending").last()
+            # Reliable lookup using CheckoutRequestID
+            payment = None
+            if checkout_request_id:
+                payment = Payment.objects.filter(checkout_request_id=checkout_request_id, status="pending").last()
+            
+            # Fallback to phone number if CheckoutRequestID lookup fails (for compatibility or edge cases)
+            if not payment and phone:
+                payment = Payment.objects.filter(phone_number__contains=str(phone), status="pending").last()
+
             if payment:
                 payment.status = "completed"
                 payment.mpesa_receipt = receipt

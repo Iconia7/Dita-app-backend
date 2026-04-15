@@ -60,38 +60,55 @@ def expand_course_codes(val):
     """
     Expands shorthand course codes like BIL112X/Y into ['BIL112X', 'BIL112Y']
     and LLD345/407 into ['LLD345', 'LLD407'].
+
+    Handles patterns such as:
+        ACS211A/SIT211A           -> ['ACS211A', 'SIT211A']
+        ACS213A/MIS221A/SIT213A   -> ['ACS213A', 'MIS221A', 'SIT213A']
+        LLB 111/204/203A/419A     -> ['LLB111', 'LLB204', 'LLB203A', 'LLB419A']
+        ACT 200/LLB212/307/422    -> ['ACT200', 'LLB212', 'LLB307', 'LLB422']
+        LLB 213/315/407/214       -> ['LLB213', 'LLB315', 'LLB407', 'LLB214']
+        BIL112X/Y                 -> ['BIL112X', 'BIL112Y']
     """
     if not val:
         return []
 
-    # Split by common separators including newlines, slashes, ampersands, commas, semicolons
-    import re
     parts = re.split(r"[/&\n,;]", str(val))
     expanded = []
-    last_full_code = ""
+    last_prefix = ""      # letter-only prefix of the last full code, e.g. "LLB"
+    last_full_code = ""   # last full normalised code, e.g. "LLB111"
 
     for p in parts:
-        p = p.strip()
-        if not p or p.upper() in ["CHAPEL", "BREAK", "NONE"]:
+        # Normalise: remove ALL whitespace and uppercase
+        p = re.sub(r"\s+", "", p).upper()
+        if not p or p in ["CHAPEL", "BREAK", "NONE"]:
             continue
 
-        # Handle suffix expansion: e.g. BIL112X/Y -> BIL112Y
-        if len(p) <= 2 and last_full_code and len(last_full_code) > len(p):
-            prefix = last_full_code[: -len(p)]
-            full_code = prefix + p
-            expanded.append(full_code)
-        # Handle numeric expansion: e.g. LLD345/407 -> LLD407
-        elif p.isdigit() and len(p) == 3 and last_full_code:
-            match = re.match(r"^([A-Z]+)", last_full_code.upper())
-            if match:
-                letters = match.group(1)
-                full_code = letters + p
-                expanded.append(full_code)
-            else:
-                expanded.append(p)
-        else:
+        # ── Pattern A: full course code  e.g. "ACS211A", "LLB111", "SIT213A"
+        #    2+ leading letters, 1+ digits, optional trailing letters
+        if re.match(r"^[A-Z]{2,}\d+[A-Z]*$", p):
             expanded.append(p)
             last_full_code = p
+            m = re.match(r"^([A-Z]+)", p)
+            last_prefix = m.group(1) if m else last_prefix
+
+        # ── Pattern B: digits + optional trailing letters  e.g. "204", "203A", "419A"
+        #    No leading letters — inherit last_prefix
+        elif re.match(r"^\d+[A-Z]*$", p) and last_prefix:
+            expanded.append(last_prefix + p)
+            # Keep last_prefix unchanged for subsequent shorthand codes
+
+        # ── Pattern C: single/double letter suffix  e.g. "Y" in "BIL112X/Y"
+        #    Replace the last N chars of the previous full code
+        elif re.match(r"^[A-Z]{1,2}$", p) and last_full_code and len(last_full_code) > len(p):
+            expanded.append(last_full_code[: -len(p)] + p)
+
+        # ── Fallback: keep as-is (unexpected format)
+        else:
+            if len(p) >= 3:
+                expanded.append(p)
+            last_full_code = p
+            m = re.match(r"^([A-Z]+)", p)
+            last_prefix = m.group(1) if m else last_prefix
 
     return expanded
 

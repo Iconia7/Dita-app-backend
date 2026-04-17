@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import openpyxl
+import docx
 from django.utils import timezone
 
 
@@ -203,3 +204,88 @@ def process_exam_excel(file_path):
             i += 1
     return all_exams
 
+def process_nursing_exam_docx(file_path):
+    """
+    Parses the Nursing School Word document exam timetable.
+    Handles merged cells, campus labels, and multi-exam cells.
+    """
+    doc = docx.Document(file_path)
+    all_exams = []
+
+    current_date = None
+    last_campus = ""
+
+    for table in doc.tables:
+        for row in table.rows:
+            # Use raw cell access to resolve merged cells (python-docx repeats text for merges)
+            cells = [c.text.strip() for c in row.cells]
+
+            # Basic validations (The nursing table has ~11 columns)
+            if not cells or len(cells) < 10:
+                continue
+
+            # 1. Header Detection & Skip
+            if "COORDINATOR" in cells[2].upper() or "HRS" in cells[4].upper():
+                continue
+
+            # 2. Date Propagation
+            # The date usually appears in the first cell of a new day block
+            potential_date = parse_date_string(cells[0])
+            if potential_date:
+                current_date = potential_date
+
+            if not current_date:
+                continue
+
+            # 3. Campus Propagation
+            campus = cells[1].strip() or last_campus
+            if campus:
+                last_campus = campus
+
+            # 4. Helper for extracting exams from slots (Morning/Afternoon)
+            def _extract_from_slot(course_text, hrs_text, venue_text, default_time_range):
+                if not course_text or "NONE" in course_text.upper():
+                    return
+
+                # Time parsing
+                s_time, e_time, dur_fallback = parse_time_range(default_time_range)
+                if not s_time:
+                    return
+
+                # Split by newlines for cells containing multiple units
+                units = [u.strip() for u in course_text.split('\n') if u.strip()]
+                durations = [d.strip() for d in hrs_text.split('\n') if d.strip()]
+                venues = [v.strip() for v in venue_text.split('\n') if v.strip()]
+
+                for idx, unit_str in enumerate(units):
+                    codes = expand_course_codes(unit_str)
+                    if not codes:
+                        continue
+
+                    # Match duration and venue per unit if available
+                    d = durations[idx] if idx < len(durations) else (durations[0] if durations else str(dur_fallback))
+                    v = venues[idx] if idx < len(venues) else (venues[0] if venues else "DMMLC")
+
+                    # Add campus prefix as requested
+                    full_venue = f"{campus} - {v}" if campus else v
+
+                    for code in codes:
+                        naive_dt = datetime.combine(current_date, s_time)
+                        full_datetime = timezone.make_aware(naive_dt)
+
+                        all_exams.append({
+                            "course_code": code,
+                            "title": unit_str,
+                            "date": full_datetime,
+                            "end_time": e_time,
+                            "venue": full_venue,
+                            "duration_hours": Decimal(d) if d.replace('.', '', 1).isdigit() else dur_fallback,
+                        })
+
+            # Process Morning Slot (Cols 3, 4, 5)
+            _extract_from_slot(cells[3], cells[4], cells[5], "8.30AM-11.30AM")
+
+            # Process Afternoon Slot (Cols 7, 8, 9)
+            _extract_from_slot(cells[7], cells[8], cells[9], "1.30PM-4.30PM")
+
+    return all_exams

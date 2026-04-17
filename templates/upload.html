@@ -250,10 +250,10 @@
                 {% csrf_token %}
                 <div class="upload-zone" id="drop-zone">
                     <span class="upload-icon">📄</span>
-                    <span class="upload-text">Select Excel Document</span>
-                    <span class="upload-subtext">or drag and drop here</span>
+                    <span class="upload-text">Select Timetable Document</span>
+                    <span class="upload-subtext">Excel (.xlsx) or Word (.docx)</span>
 
-                    <input type="file" name="myfile" id="myfile" required accept=".xlsx, .xls">
+                    <input type="file" name="myfile" id="myfile" required accept=".xlsx, .xls, .docx">
                     <div id="file-name"></div>
                 </div>
 
@@ -261,11 +261,11 @@
             </form>
 
             <div class="guide">
-                <h3>💡 Quick Guide</h3>
+                <h3>💡 Timetable Guide</h3>
                 <ul>
+                    <li class="guide-item"><b>Excel files</b>: Replaces the entire main timetable.</li>
+                    <li class="guide-item"><b>Word files</b>: Adds Nursing exams on top of existing ones.</li>
                     <li class="guide-item">Supports multi-campus extraction automatically.</li>
-                    <li class="guide-item">Cleans and updates the entire exam schedule.</li>
-                    <li class="guide-item">Optimized for mobile app synchronization.</li>
                 </ul>
             </div>
         </div>

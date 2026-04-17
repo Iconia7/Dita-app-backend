@@ -71,19 +71,34 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
 def upload_timetable(request):
     """
-    View function to handle the upload of an Excel file containing exam timetable data.
-    The view processes the uploaded file, extracts exam information, and updates the Exam model in the database accordingly.
-    It also provides feedback on the success or failure of the import process through the rendered template.
+    View function to handle the upload of an Excel (.xlsx) or Word (.docx) file containing exam timetable data.
+    - Excel files: Clears the entire Exam database and imports fresh data.
+    - Word files (Nursing): Appends the new exams to the existing database without clearing.
     """
     context = {}
     if request.method == "POST" and request.FILES.get("myfile"):
         myfile = request.FILES["myfile"]
+        filename_lower = myfile.name.lower()
+        
         fs = FileSystemStorage()
         filename = fs.save(myfile.name, myfile)
         file_path = fs.path(filename)
+        
         try:
-            exams_data = process_exam_excel(file_path)
-            Exam.objects.all().delete()
+            # 1. Choose Parser based on extension
+            if filename_lower.endswith(('.xlsx', '.xls')):
+                exams_data = process_exam_excel(file_path)
+                # Excel acts as the "Master" timetable - clear everything first
+                Exam.objects.all().delete()
+                
+            elif filename_lower.endswith('.docx'):
+                exams_data = process_nursing_exam_docx(file_path)
+                # Word (Nursing) acts as a supplement - DO NOT delete existing exams
+                
+            else:
+                raise Exception("Unsupported file format. Please upload an Excel (.xlsx) or Word (.docx) file.")
+
+            # 2. Process and Save
             exam_objects = [
                 Exam(
                     course_code=item["course_code"],
@@ -95,11 +110,20 @@ def upload_timetable(request):
                 )
                 for item in exams_data
             ]
-            Exam.objects.bulk_create(exam_objects)
-            context["success"] = f"Success! Imported {len(exam_objects)} exams."
+            
+            if exam_objects:
+                Exam.objects.bulk_create(exam_objects)
+                context["success"] = f"Success! Imported {len(exam_objects)} exams."
+            else:
+                context["info"] = "No valid exam entries found in the file."
+                
         except Exception as e:
             context["error"] = f"Error: {str(e)}"
-        fs.delete(filename)
+        finally:
+            # Ensure cleanup happens even on error
+            if fs.exists(filename):
+                fs.delete(filename)
+                
     return render(request, "upload.html", context)
 
 

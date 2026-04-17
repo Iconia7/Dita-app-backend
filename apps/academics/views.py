@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from apps.users.models import User
-from config.utils import process_exam_excel
+from config.utils import process_exam_excel, process_nursing_exam_docx
 from .models import AppConfig, AppUpdate, Exam, Resource, Task
 from .serializers import (
     AppConfigSerializer, AppUpdateSerializer, ExamSerializer,

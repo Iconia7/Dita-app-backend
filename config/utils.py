@@ -224,15 +224,16 @@ def process_nursing_exam_docx(file_path):
             if not cells or len(cells) < 10:
                 continue
 
-            # 1. Header Detection & Skip
-            if "COORDINATOR" in cells[2].upper() or "HRS" in cells[4].upper():
-                continue
-
-            # 2. Date Propagation
-            # The date usually appears in the first cell of a new day block
+            # 1. Date Propagation
+            # The date usually appears in the first cell of a new day block.
+            # We check this BEFORE the header skip to ensure we don't skip the day label.
             potential_date = parse_date_string(cells[0])
             if potential_date:
                 current_date = potential_date
+
+            # 2. Header Detection & Skip
+            if "COORDINATOR" in cells[2].upper() or "HRS" in cells[4].upper():
+                continue
 
             if not current_date:
                 continue
@@ -258,7 +259,8 @@ def process_nursing_exam_docx(file_path):
                 venues = [v.strip() for v in venue_text.split('\n') if v.strip()]
 
                 for idx, unit_str in enumerate(units):
-                    codes = expand_course_codes(unit_str)
+                    # Use Regex to hunt for codes like NUR 123 in the string
+                    codes = re.findall(r'([A-Z]{2,}\s*\d+[A-Z]*)', unit_str.upper())
                     if not codes:
                         continue
 
@@ -269,7 +271,8 @@ def process_nursing_exam_docx(file_path):
                     # Add campus prefix as requested
                     full_venue = f"{campus} - {v}" if campus else v
 
-                    for code in codes:
+                    for code_match in codes:
+                        code = code_match.replace(' ', '') # Normalise NUR 123 to NUR123
                         naive_dt = datetime.combine(current_date, s_time)
                         full_datetime = timezone.make_aware(naive_dt)
 

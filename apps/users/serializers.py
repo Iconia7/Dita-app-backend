@@ -11,19 +11,32 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom serializer for obtaining JWT tokens, allowing login with either username or admission number."""
 
     def validate(self, attrs):
-        """Override the validate method to allow login with either username or admission number."""
+        """Override the validate method to allow login with either username, email, or admission number."""
         login_input = attrs.get("username")
+        
+        print(f"[DEBUG] Login attempt received for input: '{login_input}'")
 
-        # If the input is not a username, try to find a user with the given admission number
-        # and set the username for authentication purposes
+        # Try to find user by username, email, or admission number
         if login_input:
             user = User.objects.filter(
-                Q(username__iexact=login_input) | Q(admission_number__iexact=login_input)
+                Q(username__iexact=login_input) | 
+                Q(email__iexact=login_input) | 
+                Q(admission_number__iexact=login_input)
             ).first()
+            
             if user:
+                print(f"[DEBUG] Found user: {user.username} (ID: {user.id})")
                 attrs["username"] = user.username
+            else:
+                print(f"[DEBUG] No user found matching input: '{login_input}'")
+        
         # Perform standard JWT authentication
-        data = super().validate(attrs)
+        try:
+            data = super().validate(attrs)
+            print(f"[DEBUG] Authentication successful for user: {self.user.username}")
+        except Exception as e:
+            print(f"[DEBUG] Authentication failed for user '{attrs.get('username')}': {str(e)}")
+            raise
 
         data["id"] = self.user.id
         data["username"] = self.user.username

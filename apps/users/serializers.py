@@ -13,8 +13,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         """Override the validate method to allow login with either username, email, or admission number."""
         login_input = attrs.get("username")
-        
-        print(f"[DEBUG] Login attempt received for input: '{login_input}'")
 
         # Try to find user by username, email, or admission number
         if login_input:
@@ -25,18 +23,13 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             ).first()
             
             if user:
-                print(f"[DEBUG] Found user: {user.username} (ID: {user.id})")
                 attrs["username"] = user.username
-            else:
-                print(f"[DEBUG] No user found matching input: '{login_input}'")
         
         # Perform standard JWT authentication
         try:
             data = super().validate(attrs)
-            print(f"[DEBUG] Authentication successful for user: {self.user.username}")
-        except Exception as e:
-            print(f"[DEBUG] Authentication failed for user '{attrs.get('username')}': {str(e)}")
-            raise
+        except Exception:
+            raise AuthenticationFailed("No active account found with the given credentials")
 
         data["id"] = self.user.id
         data["username"] = self.user.username

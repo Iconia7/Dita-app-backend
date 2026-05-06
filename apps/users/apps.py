@@ -19,10 +19,10 @@ class UsersConfig(AppConfig):
                 if cred_path and os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
-                    print("✅ Firebase initialized successfully")
+                    print("[INFO] Firebase initialized successfully")
                 else:
-                    print(f"❌ ERROR: serviceAccountKey.json NOT FOUND at: {cred_path}")
+                    print(f"[ERROR] Firebase serviceAccountKey.json NOT FOUND at: {cred_path}")
             except Exception as e:
-                print(f"❌ Firebase Initialization Failed: {e}")
+                print(f"[ERROR] Firebase Initialization Failed: {e}")
 
         import apps.users.signals  # noqa: F401

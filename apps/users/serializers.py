@@ -22,10 +22,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             ).first()
             if user:
                 attrs["username"] = user.username
-        try:
-            data = super().validate(attrs)
-        except Exception:
-            raise AuthenticationFailed("Invalid credentials. Please check your password.")
+        # Perform standard JWT authentication
+        data = super().validate(attrs)
 
         data["id"] = self.user.id
         data["username"] = self.user.username

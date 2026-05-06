@@ -177,6 +177,12 @@ else:
 # Root Backend Configuration
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://api.dita.co.ke")
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY")
+# Firebase credentials
+FIREBASE_SERVICE_ACCOUNT_PATH = os.environ.get(
+    "FIREBASE_SERVICE_ACCOUNT_PATH", 
+    os.path.join(BASE_DIR, "config", "serviceAccountKey.json")
+)
+
 MPESA_CALLBACK_SECRET = os.environ.get("MPESA_CALLBACK_SECRET")
 
 CSRF_TRUSTED_ORIGINS = [

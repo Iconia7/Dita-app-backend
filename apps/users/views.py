@@ -1,16 +1,23 @@
 import os
 import hmac
+import random
+import requests
+from datetime import timedelta
 from django.db.models import Q
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
 
 from firebase_admin import auth
 from rest_framework import generics, permissions, viewsets
-from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Achievement, User, UserAchievement
+from .models import Achievement, User, UserAchievement, PhoneOTP
 from .serializers import (
     AchievementSerializer,
     MyTokenObtainPairSerializer,
@@ -164,6 +171,189 @@ def reset_password_phone(request):
     user.set_password(new_password)
     user.save()
     return Response({"message": "Password reset successfully!"})
+
+
+def format_phone_number(phone):
+    """Formats a phone number to E.164 international format (+254...) for Kenya."""
+    phone = phone.strip()
+    if phone.startswith('+'):
+        return phone
+    if phone.startswith('0'):
+        return '+254' + phone[1:]
+    if len(phone) == 9 and (phone.startswith('7') or phone.startswith('1')):
+        return '+254' + phone
+    return phone
+
+
+def get_user_by_phone(phone_number):
+    """Finds a user by phone number using formatted international or local zero format."""
+    formatted = format_phone_number(phone_number)
+    user = User.objects.filter(phone_number=formatted).first()
+    if not user and formatted.startswith("+254"):
+        local_format = "0" + formatted[4:]
+        user = User.objects.filter(phone_number=local_format).first()
+    return user
+
+
+def send_otp_sms(phone_number, otp):
+    """Sends an OTP code via Africa's Talking SMS API."""
+    api_key = os.environ.get("AFRICAS_TALKING_API_KEY")
+    username = os.environ.get("AFRICAS_TALKING_USERNAME", "sandbox")
+    sender_id = os.environ.get("AFRICAS_TALKING_SENDER_ID")
+    is_sandbox = os.environ.get("AFRICAS_TALKING_IS_SANDBOX", "True").lower() == "true"
+
+    if not api_key:
+        print("Warning: AFRICAS_TALKING_API_KEY not set. OTP sending logged locally.")
+        print(f"SMS OTP for {phone_number}: {otp}")
+        # In development environment without API keys, mock success to allow testing/flow completion
+        return True
+
+    url = (
+        "https://api.sandbox.africastalking.com/version1/messaging"
+        if is_sandbox
+        else "https://api.africastalking.com/version1/messaging"
+    )
+
+    headers = {
+        "apiKey": api_key,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+    }
+
+    message = f"Your DITA password reset code is {otp}. Valid for 10 minutes."
+
+    data = {
+        "username": username,
+        "to": phone_number,
+        "message": message,
+    }
+    if sender_id:
+        data["from"] = sender_id
+
+    try:
+        response = requests.post(url, headers=headers, data=data, timeout=15)
+        if response.status_code in [200, 201]:
+            print(f"Africa's Talking SMS API success: {response.json()}")
+            return True
+        else:
+            print(f"Africa's Talking SMS API failed with status {response.status_code}: {response.text}")
+            return False
+    except Exception as e:
+        print(f"Exception while sending SMS via Africa's Talking: {e}")
+        return False
+
+
+class OTPRequestThrottle(AnonRateThrottle):
+    """Custom throttle to limit OTP request requests to 5 per hour per IP."""
+    rate = '5/hour'
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([OTPRequestThrottle])
+def request_otp(request):
+    """API view to request a password reset OTP, sent via Africa's Talking SMS."""
+    phone_number = request.data.get("phone_number")
+    if not phone_number:
+        return Response({"error": "Phone number is required"}, status=400)
+
+    phone_number = phone_number.strip()
+    user = get_user_by_phone(phone_number)
+    if not user:
+        return Response({"error": "No student found with this phone number"}, status=404)
+
+    # Format recipient for Africa's Talking
+    formatted_recipient = format_phone_number(phone_number)
+
+    # Check 60-second cooldown per phone number to prevent SMS flooding
+    existing_otp = PhoneOTP.objects.filter(phone_number=formatted_recipient).first()
+    if existing_otp and timezone.now() < existing_otp.created_at + timedelta(seconds=60):
+        return Response(
+            {"error": "Please wait 60 seconds before requesting another code."},
+            status=429
+        )
+
+    # Generate a random 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+
+    # Send the OTP via Africa's Talking
+    success = send_otp_sms(formatted_recipient, otp)
+
+    if not success:
+        return Response({"error": "Failed to send SMS. Please try again later."}, status=500)
+
+    # Save or update the OTP in the database (resetting failed attempts to 0)
+    PhoneOTP.objects.update_or_create(
+        phone_number=formatted_recipient,
+        defaults={"otp": otp, "created_at": timezone.now(), "failed_attempts": 0}
+    )
+
+    return Response({"message": "OTP sent successfully via SMS!"})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset_password_otp(request):
+    """API view to verify the OTP and update the user's password with strength validation."""
+    phone_number = request.data.get("phone_number")
+    otp = request.data.get("otp")
+    new_password = request.data.get("new_password")
+
+    if not phone_number or not otp or not new_password:
+        return Response({"error": "Phone number, OTP, and new password are required"}, status=400)
+
+    phone_number = phone_number.strip()
+    otp = otp.strip()
+    new_password = new_password.strip()
+
+    formatted_phone = format_phone_number(phone_number)
+
+    otp_record = PhoneOTP.objects.filter(phone_number=formatted_phone).first()
+    if not otp_record:
+        return Response({"error": "No OTP requested for this phone number"}, status=400)
+
+    # Check expiration (10 minutes)
+    if timezone.now() > otp_record.created_at + timedelta(minutes=10):
+        otp_record.delete()
+        return Response({"error": "OTP has expired. Please request a new one."}, status=400)
+
+    user = get_user_by_phone(formatted_phone)
+    if not user:
+        return Response({"error": "No student found with this phone number"}, status=404)
+
+    # Verify match and handle brute-force protection
+    if otp_record.otp != otp:
+        otp_record.failed_attempts += 1
+        if otp_record.failed_attempts >= 3:
+            otp_record.delete()
+            return Response(
+                {"error": "Too many failed attempts. This code is now invalid. Please request a new one."},
+                status=400
+            )
+        else:
+            otp_record.save()
+            remaining = 3 - otp_record.failed_attempts
+            return Response(
+                {"error": f"Invalid OTP. {remaining} attempt(s) remaining."},
+                status=400
+            )
+
+    # Validate new password strength
+    try:
+        validate_password(new_password, user)
+    except ValidationError as e:
+        return Response({"error": " ".join(e.messages)}, status=400)
+
+    # Update password
+    user.set_password(new_password)
+    user.save()
+
+    # Clean up OTP record
+    otp_record.delete()
+
+    return Response({"message": "Password reset successfully!"})
+
+
 
 
 @api_view(["POST"])

@@ -16,6 +16,8 @@ urlpatterns = [
     path("auth/register/", views.RegisterView.as_view(), name="register"),
     path("auth/change-password/", views.change_password, name="change_password"),
     path("auth/reset-password-phone/", views.reset_password_phone, name="reset-password-phone"),
+    path("auth/request-otp/", views.request_otp, name="request_otp"),
+    path("auth/reset-password-otp/", views.reset_password_otp, name="reset_password_otp"),
     path("leaderboard/", views.get_leaderboard, name="leaderboard"),
     path("verify-voter/", views.verify_voter, name="verify_voter"),
     *router.urls,

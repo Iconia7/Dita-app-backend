@@ -74,3 +74,16 @@ class UserAchievement(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.achievement.name}"
+
+
+class PhoneOTP(models.Model):
+    """Model to store OTP codes sent to users for password resets."""
+
+    phone_number = models.CharField(max_length=15, unique=True)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now=True)
+    failed_attempts = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.otp}"
+

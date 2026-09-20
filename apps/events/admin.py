@@ -3,10 +3,12 @@ from io import BytesIO
 
 from django.contrib import admin
 from django.utils.html import format_html
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 
 import qrcode
 
-from .models import RSVP, Announcement, Event
+from .models import Announcement, Event, HackFestRegistration, RSVP
 
 admin.site.register(RSVP)
 
@@ -19,7 +21,7 @@ class EventAdmin(admin.ModelAdmin):
     readonly_fields = ("qr_code_preview",)
 
     def qr_code_preview(self, obj):
-        """Generate a QR code preview for the event, which can be scanned for attendance tracking. The QR code encodes the event's ID."""
+        """Generate a QR code preview for the event."""
         if not obj.pk:
             return "Save the event first to generate QR"
         qr = qrcode.QRCode(version=1, box_size=5, border=2)
@@ -36,8 +38,61 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    """Custom admin interface for the Announcement model, allowing administrators to manage announcements with fields for title, message, date posted, active status, and an optional image. The list display includes the title, date posted, and active status, with filters for active status and date posted, and search functionality for the title and message fields."""
-
     list_display = ("title", "date_posted", "is_active")
     list_filter = ("is_active", "date_posted")
     search_fields = ("title", "message")
+
+
+class HackFestRegistrationResource(resources.ModelResource):
+    class Meta:
+        model = HackFestRegistration
+        fields = (
+            "id",
+            "event_slug",
+            "registration_type",
+            "team_name",
+            "team_size",
+            "full_name",
+            "email",
+            "phone",
+            "institution",
+            "is_daystar",
+            "student_id",
+            "campus",
+            "track_preference",
+            "role_preference",
+            "status",
+            "created_at",
+        )
+        export_order = fields
+
+
+@admin.register(HackFestRegistration)
+class HackFestRegistrationAdmin(ImportExportModelAdmin):
+    resource_classes = [HackFestRegistrationResource]
+    list_display = (
+        "id",
+        "display_name",
+        "registration_type",
+        "team_size",
+        "institution",
+        "track_preference",
+        "status",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "registration_type",
+        "is_daystar",
+        "track_preference",
+        "created_at",
+    )
+    search_fields = (
+        "team_name",
+        "full_name",
+        "email",
+        "phone",
+        "student_id",
+        "institution",
+    )
+    readonly_fields = ("created_at", "updated_at")

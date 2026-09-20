@@ -152,7 +152,11 @@ AUTH_USER_MODEL = "users.User"
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:5173",
     "https://api.dita.co.ke",
+    "https://dita.co.ke",
+    "https://www.dita.co.ke",
+    "https://dita-hackfest-26.pages.dev",
     "https://62.169.16.219",
 ]
 CORS_ALLOW_CREDENTIALS = True

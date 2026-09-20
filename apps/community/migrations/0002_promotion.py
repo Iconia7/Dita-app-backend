@@ -1,7 +1,33 @@
-# Generated manually by DITA AI on 2026-04-04
-
 from django.db import migrations, models
 
+def create_promotion_table(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute("""
+            CREATE TABLE IF NOT EXISTS community_promotion (
+                id bigserial PRIMARY KEY,
+                title varchar(100) NOT NULL,
+                image varchar(100),
+                link varchar(200),
+                is_active boolean NOT NULL DEFAULT true,
+                created_at timestamptz NOT NULL
+            );
+            ALTER TABLE community_promotion ADD COLUMN IF NOT EXISTS description text;
+        """)
+    else:
+        schema_editor.execute("""
+            CREATE TABLE IF NOT EXISTS community_promotion (
+                id integer PRIMARY KEY AUTOINCREMENT,
+                title varchar(100) NOT NULL,
+                description text,
+                image varchar(100),
+                link varchar(200),
+                is_active bool NOT NULL DEFAULT 1,
+                created_at datetime NOT NULL
+            );
+        """)
+
+def reverse_promotion_table(apps, schema_editor):
+    schema_editor.execute('DROP TABLE IF EXISTS community_promotion;')
 
 class Migration(migrations.Migration):
 
@@ -26,21 +52,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                # If table doesn't exist, create it. If it does, just add the missing column.
-                migrations.RunSQL(
-                    sql="""
-                    CREATE TABLE IF NOT EXISTS community_promotion (
-                        id bigserial PRIMARY KEY,
-                        title varchar(100) NOT NULL,
-                        image varchar(100),
-                        link varchar(200),
-                        is_active boolean NOT NULL DEFAULT true,
-                        created_at timestamptz NOT NULL
-                    );
-                    ALTER TABLE community_promotion ADD COLUMN IF NOT EXISTS description text;
-                    """,
-                    reverse_sql="DROP TABLE IF EXISTS community_promotion;"
-                ),
+                migrations.RunPython(create_promotion_table, reverse_promotion_table),
             ],
         ),
     ]

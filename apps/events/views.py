@@ -1,10 +1,17 @@
-from rest_framework import viewsets
+from django.db.models import Sum
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
 
-from .models import RSVP, Announcement, Event
-from .serializers import AnnouncementSerializer, EventSerializer
+from .models import Announcement, Event, HackFestRegistration, RSVP
+from .serializers import (
+    AnnouncementSerializer,
+    EventSerializer,
+    HackFestRegistrationSerializer,
+)
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -54,3 +61,69 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.filter(is_active=True).order_by("-date_posted")
     serializer_class = AnnouncementSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+class HackFestRegistrationThrottle(AnonRateThrottle):
+    rate = "30/hour"
+
+
+class HackFestRegistrationView(APIView):
+    """
+    Public endpoint for Hack Fest '26 registrations and capacity querying.
+    Accessible to all builders (Daystar students and external participants).
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [HackFestRegistrationThrottle]
+
+    def get(self, request, event_slug="hack-fest-26"):
+        """Return live builder headcount, 50-cap status, remaining slots, and waitlist state."""
+        confirmed_count = (
+            HackFestRegistration.objects.filter(event_slug=event_slug, status="confirmed").aggregate(
+                total=Sum("team_size")
+            )["total"]
+            or 0
+        )
+        cap = 50
+        remaining = max(0, cap - confirmed_count)
+
+        return Response({
+            "event_slug": event_slug,
+            "cap": cap,
+            "confirmed_count": confirmed_count,
+            "remaining_slots": remaining,
+            "is_full": remaining == 0,
+            "waitlist_active": remaining == 0,
+        })
+
+    def post(self, request, event_slug="hack-fest-26"):
+        """Submit a team or individual registration for Hack Fest '26."""
+        data = request.data.copy()
+        data["event_slug"] = event_slug
+
+        serializer = HackFestRegistrationSerializer(data=data)
+        if serializer.is_valid():
+            registration = serializer.save()
+            message = (
+                "Registration confirmed! Welcome to DITA Hack Fest '26."
+                if registration.status == "confirmed"
+                else "The 50-builder capacity has been reached. You have been placed on the priority waitlist."
+            )
+
+            return Response(
+                {
+                    "success": True,
+                    "status": registration.status,
+                    "message": message,
+                    "registration_id": registration.id,
+                    "team_name": registration.team_name,
+                    "team_size": registration.team_size,
+                    "institution": registration.institution,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {"success": False, "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
